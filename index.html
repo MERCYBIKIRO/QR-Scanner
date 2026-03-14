@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>V74 Thunder Scanner</title>
+  <title>V75 Thunder Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root { --primary: #4f46e5; --bg-gradient: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); --text-main: #111827; --scan-bg-dark: #111827; --btn-purple: #6366f1; --btn-dark: #1f2937; }
@@ -44,8 +45,6 @@
     .stat-box { padding: 10px; border-radius: 10px; font-weight: bold; }
     .delete-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
     .del-btn-small { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
-    .modal-content { background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 350px; }
     #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 12px 24px; border-radius: 50px; display: none; z-index: 200; }
     .toast-success { background: #059669 !important; } .toast-error { background: #dc2626 !important; }
   </style>
@@ -65,18 +64,10 @@
       <div class="card-header">
         <div class="header-top-row">
           <div class="icon-btn" onclick="logout()" style="background:#fee2e2;color:#dc2626">🚪</div>
-          <div style="display:flex;gap:10px">
-            <button id="btnNewClass" class="btn-new-class" onclick="goToCreator()">+ New Class</button>
-            <div class="icon-btn" onclick="openSettings()">⚙️</div>
-          </div>
+          <button id="btnNewClass" class="btn-new-class" onclick="goToCreator()">+ New Class</button>
         </div>
-        <div class="header-title-row">
-          <h2 id="welcomeHeader">👋 Teacher</h2>
-          <p id="lateStatus" style="color:#f59e0b;font-size:0.85rem;margin:2px 0 0 0;font-weight:500">Late Time: OFF</p>
-        </div>
-        <div class="header-bottom-row">
-          <select id="sheetSelectorScan" onchange="syncSelectors(this.value); loadClassCache(this.value)"><option disabled selected>Loading...</option></select>
-        </div>
+        <h2 id="welcomeHeader">👋 Teacher</h2>
+        <select id="sheetSelectorScan" onchange="syncSelectors(this.value); loadClassCache(this.value)"><option disabled selected>Loading...</option></select>
       </div>
       <div class="card-body-scanner">
         <div id="reader"></div>
@@ -86,87 +77,43 @@
     </div>
   </div>
 
-  <div id="tab-register" class="container"><div class="main-card"><div class="card-header"><h2>📝 Single Entry</h2><select id="sheetSelectorReg" onchange="syncSelectors(this.value)"><option disabled selected>Loading...</option></select><label>Full Name</label><input type="text" id="regName" placeholder="e.g. Doe, John"><label>Gender</label><select id="regGender"><option>Male</option><option>Female</option></select><button id="btnReg" class="btn-primary" onclick="handleRegister()">Register Student</button></div><div id="regResult" class="card-body light" style="display:none;text-align:center;border-top:1px solid #eee"><h3 style="color:#059669;margin-top:0">Success!</h3><img id="regQrImg" style="margin:15px auto;border:8px solid white;border-radius:16px;width:160px;display:block;box-shadow:0 5px 15px rgba(0,0,0,0.1)" src=""><p id="regNameDisplay" style="font-weight:bold;margin:10px 0"></p><div class="key-box">Key: <span id="regKeyDisplay">...</span></div><button class="btn-primary" style="background:#111827" onclick="downloadSingleQR()">Download QR (Image Only)</button></div></div></div>
+  <div id="tab-register" class="container"><div class="main-card"><div class="card-header"><h2>📝 Single Entry</h2><select id="sheetSelectorReg" onchange="syncSelectors(this.value)"></select><label>Full Name</label><input type="text" id="regName" placeholder="e.g. Doe, John"><label>Gender</label><select id="regGender"><option>Male</option><option>Female</option></select><button id="btnReg" class="btn-primary" onclick="handleRegister()">Register Student</button></div><div id="regResult" class="card-body light" style="display:none;text-align:center;"><h3 style="color:#059669;">Success!</h3><img id="regQrImg" style="margin:15px auto; width:160px;" src=""><p id="regNameDisplay" style="font-weight:bold;"></p><button class="btn-primary" onclick="downloadSingleQR()">Download QR</button></div></div></div>
 
-  <div id="tab-bulk" class="container">
-    <div class="main-card">
-      <div class="card-header">
-        <h2>📦 Bulk Sort</h2>
-        <select id="sheetSelectorBulk" onchange="syncSelectors(this.value)"><option disabled selected>Loading...</option></select>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><label>MALES</label><textarea id="bulkMales" style="height:100px"></textarea></div>
-          <div><label>FEMALES</label><textarea id="bulkFemales" style="height:100px"></textarea></div>
-        </div>
-        <button id="btnBulk" class="btn-primary" onclick="handleBulkRegister()">Generate & ZIP</button>
-      </div>
-    </div>
-  </div>
+  <div id="tab-bulk" class="container"><div class="main-card"><div class="card-header"><h2>📦 Bulk Sort</h2><select id="sheetSelectorBulk" onchange="syncSelectors(this.value)"></select><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>MALES</label><textarea id="bulkMales" style="height:100px"></textarea></div><div><label>FEMALES</label><textarea id="bulkFemales" style="height:100px"></textarea></div></div><button id="btnBulk" class="btn-primary" onclick="handleBulkRegister()">Generate & ZIP</button></div></div></div>
 
   <div id="tab-manage" class="container">
     <div class="main-card">
       <div class="card-header">
-        <h2>🔍 Search & Edit</h2>
-        <select id="sheetSelectorSearch" onchange="syncSelectors(this.value); loadClassCache(this.value)"><option disabled selected>Loading...</option></select>
+        <h2>🔍 Search & Reports</h2>
+        <select id="sheetSelectorSearch" onchange="syncSelectors(this.value); loadClassCache(this.value)"></select>
         <input type="text" id="searchName" placeholder="Filter..." oninput="filterStudents(this.value)">
-        <div id="rosterContainer"><div style="padding:15px;color:#9ca3af;text-align:center">Select class to load students.</div></div>
-        <hr style="margin:20px 0;border:0;border-top:1px solid #eee">
-        <button style="width:100%;padding:10px;background:#e5e7eb;border:none;border-radius:10px;cursor:pointer" onclick="downloadReport()">📄 Download PDF Report</button>
+        <div id="rosterContainer"></div>
+        <button id="btnDownloadExcel" class="btn-primary" style="background:#10b981" onclick="downloadExcelReport()">📊 Download Excel Report (.xlsx)</button>
       </div>
-      
       <div class="card-body light" id="searchResult" style="display:none;text-align:center">
-        <div style="text-align:left;margin-bottom:10px;cursor:pointer;color:#6b7280" onclick="document.getElementById('searchResult').style.display='none'">← Back to List</div>
-        <img id="searchQrImg" class="qr-display" style="margin:0 auto 10px auto; width:150px; border-radius:10px; border:5px solid white; box-shadow:0 4px 10px rgba(0,0,0,0.1);" src="">
         <h3 id="searchResultName"></h3>
-        <div class="key-box">Key: <span id="searchResultKey"></span></div>
         <div class="stats-grid">
           <div class="stat-box" style="background:#ecfdf5;color:#059669">Present<br><span id="statPresent">0</span></div>
           <div class="stat-box" style="background:#fffbeb;color:#d97706">Late<br><span id="statLate">0</span></div>
           <div class="stat-box" style="background:#fef2f2;color:#dc2626">Absent<br><span id="statAbsent">0</span></div>
         </div>
-        <button class="btn-primary" style="background:#111827; margin-bottom: 20px;" onclick="downloadSearchQR()">Download QR</button>
-        <div style="display:flex;gap:10px;justify-content:center">
-          <button style="background:#e5e7eb;border:none;padding:8px 16px;border-radius:8px;cursor:pointer" onclick="document.getElementById('editForm').style.display='block'">Edit</button>
-          <button style="background:#ef4444;color:white;border:none;padding:8px 16px;border-radius:8px;cursor:pointer" onclick="deleteCurrentStudent()">Delete</button>
-        </div>
         <button class="btn-outline" onclick="switchTab('scan')">📷 Back to Scanning</button>
-        <div id="editForm" style="display:none;margin-top:20px"><input type="text" id="editNameInput"><button class="btn-primary" onclick="saveStudentEdit()">Save</button></div>
       </div>
     </div>
   </div>
 
-  <div id="tab-sem" class="container">
-    <div class="main-card">
-      <div class="card-header">
-        <h2>📝 Semester Registration</h2>
-        <div style="display:flex;gap:10px"><div style="flex:1"><label>Section</label><input type="text" id="semSection"></div><div style="flex:1"><label>Subject</label><input type="text" id="semSubject"></div></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label>MALES</label><textarea id="semMales" style="height:100px"></textarea></div><div><label>FEMALES</label><textarea id="semFemales" style="height:100px"></textarea></div></div>
-        <div style="margin-top:15px">
-          <label>Start</label>
-          <div style="display:flex;gap:5px"><select id="semFromMonth" style="flex:2"></select><select id="semFromYear" style="flex:1"></select></div>
-          <label style="margin-top:15px; display:block;">End</label> 
-          <div style="display:flex;gap:5px"><select id="semToMonth" style="flex:2"></select><select id="semToYear" style="flex:1"></select></div>
-        </div>
-        <button id="btnSem" class="btn-primary" onclick="createSemester()">Create & Register</button>
-      </div>
-    </div>
-  </div>
+  <div id="tab-sem" class="container"><div class="main-card"><div class="card-header"><h2>📝 Semester Registration</h2><div style="display:flex;gap:10px;"><input type="text" id="semSection" placeholder="Section"><input type="text" id="semSubject" placeholder="Subject"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label>MALES</label><textarea id="semMales" style="height:100px"></textarea></div><div><label>FEMALES</label><textarea id="semFemales" style="height:100px"></textarea></div></div><div style="margin-top:15px"><label>Start</label><select id="semFromMonth"></select><select id="semFromYear"></select><label>End</label><select id="semToMonth"></select><select id="semToYear"></select></div><button id="btnSem" class="btn-primary" onclick="createSemester()">Create & Register</button></div></div></div>
 
-  <div id="tab-delete" class="container"><div class="main-card"><div class="card-header"><h2>🗑️ Delete Classes</h2><div id="deleteListContainer" style="margin-top:20px">Loading...</div></div></div></div>
+  <div id="tab-delete" class="container"><div class="main-card"><div class="card-header"><h2>🗑️ Delete Classes</h2><div id="deleteListContainer">Loading...</div></div></div></div>
 
-  <div id="settingsModal" class="modal"><div class="modal-content"><h3>⚙️ Settings</h3><label>Late Time</label><input type="time" id="lateTimeInput"><div style="margin-top:20px;display:flex;gap:10px"><button style="flex:1;padding:10px;border:none;border-radius:8px;cursor:pointer" onclick="document.getElementById('settingsModal').style.display='none'">Cancel</button><button style="flex:1;padding:10px;background:#4f46e5;color:white;border:none;border-radius:8px;cursor:pointer" onclick="saveSettings()">Save</button></div></div></div>
   <div id="toast"></div>
 
   <script>
-    // ==========================================
-    // V74 EXTERNAL API PROXY & SETUP
-    // ==========================================
-    
-    // REPLACE THIS WITH YOUR BRAND NEW GOOGLE WEB APP URL
+    // --- V75 CONFIGURATION ---
     const API_URL = "https://script.google.com/macros/s/AKfycbzvrSgiCEdqIIUijTl0TRdxNAY5WCVdEpCTaKYTSECD1GjhUQJuYGSZourl7YxzhhUH/exec"; 
     
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token') || "";
-
     let teacherUser="", teacherName="";
     try{ const d=atob(decodeURIComponent(token)).split(":"); teacherUser=d[0]; teacherName=d[1]; }catch(e){}
 
@@ -176,312 +123,181 @@
           if (funcName === 'withSuccessHandler') return (cb) => createRunner(cb, failureCb);
           if (funcName === 'withFailureHandler') return (cb) => createRunner(successCb, cb);
           return function(...args) {
-            fetch(API_URL, {
-              method: 'POST',
-              body: JSON.stringify({ action: funcName, args: args }),
-              headers: { 'Content-Type': 'text/plain' } 
-            })
-            .then(r => r.json())
-            .then(data => {
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: funcName, args: args }), headers: { 'Content-Type': 'text/plain' } })
+            .then(r => r.json()).then(data => {
               if (data.success && successCb) successCb(data.result);
               else if (!data.success && failureCb) failureCb(data.error);
-            })
-            .catch(err => { if(failureCb) failureCb(err); });
+            }).catch(err => { if(failureCb) failureCb(err); });
           }
         }
       });
     };
-    
     const google = { script: { run: createRunner(null, null) } };
 
-
-    // ==========================================
-    // SCANNER & UI LOGIC
-    // ==========================================
-
-    let html5QrCode = null, validStudents=new Set(), studentListCache=[], lastScannedTime=0, currentLateTime=null, currentSearchResult=null;
-    const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
-    const years=[2026,2027,2028,2029,2030];
+    let html5QrCode = null, validStudents=new Set(), lastScannedTime=0;
 
     window.onload = function() {
       initDatePickers();
-
-      if(!teacherUser){ 
-        alert("Session Invalid. Redirecting to Login."); 
-        window.location.href = API_URL + "?page=login";
-      }
-      else {
-        document.getElementById('welcomeHeader').innerText = `👋 ${teacherName}`;
-        google.script.run
-          .withSuccessHandler(populateSelectors)
-          .withFailureHandler(err => {
-             alert(err);
-             const ids=["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"];
-             ids.forEach(id=>document.getElementById(id).innerHTML='<option>Error Connecting</option>');
-          })
-          .getTeacherClasses(teacherUser);
-      }
+      if(!teacherUser) return alert("Please login first.");
+      document.getElementById('welcomeHeader').innerText = `👋 ${teacherName}`;
+      google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser);
     };
-
-    function goToCreator() {
-      window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token);
-    }
-
-    function logout() { 
-      if(confirm("Log out?")) { 
-        window.location.href = API_URL + "?page=login"; 
-      } 
-    }
 
     function switchTab(t) {
       document.querySelectorAll('.container').forEach(e=>e.classList.remove('active'));
       document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
       document.getElementById('tab-'+t).classList.add('active');
-      const idx=['scan','register','bulk','manage','sem','delete'].indexOf(t);
-      document.querySelectorAll('.nav-btn')[idx].classList.add('active');
-      
-      if(t === 'manage') {
-        document.getElementById('searchResult').style.display = 'none';
-        document.getElementById('searchName').value = '';
-        filterStudents('');
-        const currentClass = document.getElementById("sheetSelectorSearch").value;
-        if(currentClass) loadClassCache(currentClass); 
-      }
+      if(t==='scan') startScanner();
       if(t==='delete') loadDeleteList();
-      if(t==='scan' && (!html5QrCode || !html5QrCode.isScanning)) startScanner();
     }
 
     function startScanner() {
-      document.getElementById('reader').innerHTML = '<div style="color:#9ca3af; padding:50px; text-align:center;">Requesting Thunder Fast Camera...</div>';
-      
       try { if(html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); } catch(e){}
       html5QrCode = new Html5Qrcode("reader");
-      
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 15, qrbox: { width: 250, height: 250 } },
-        onScanSuccess
-      ).catch(err => {
-        document.getElementById('reader').innerHTML = `
-          <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 20px; width: 90%; max-width: 320px; text-align: center; margin: 0 auto;">
-            <h3 style="color: #dc2626; margin: 0 0 10px 0;">📷 Camera Blocked!</h3>
-            <p style="color: #7f1d1d; font-size: 0.85rem; margin-bottom: 15px;">Please allow camera access in your browser settings to enable fast scanning.</p>
-            <button onclick="startScanner()" style="background: #ef4444; color: white; padding: 10px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%;">Retry Camera</button>
-          </div>
-        `;
-      });
+      html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (d) => {
+        const now=Date.now(); if(now-lastScannedTime<2000)return; lastScannedTime=now;
+        const s=document.getElementById("sheetSelectorScan").value;
+        if(validStudents.size>0 && !validStudents.has(d.trim())) return showToast("Not in class", "error");
+        google.script.run.withSuccessHandler(() => showToast("Marked: "+d, "success")).recordScan(s, d.trim());
+      }).catch(err => console.log("Camera Error"));
     }
 
     function handleFileScan(input) {
       if (input.files.length === 0) return;
-      const file = input.files[0];
-      
-      const processDirectFile = () => {
-        document.getElementById('fileBtnContainer').style.display = 'none';
-        document.getElementById('cameraBtn').style.display = 'block';
-        document.getElementById('reader').innerHTML = ""; 
-        html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.scanFile(file, true).then(d => onScanSuccess(d)).catch(e => showToast("No QR found.", "error"));
-      };
-
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => processDirectFile()).catch(err => processDirectFile());
-      } else {
-        processDirectFile();
-      }
+      const html5 = new Html5Qrcode("reader");
+      html5.scanFile(input.files[0], true).then(d => {
+        const s = document.getElementById("sheetSelectorScan").value;
+        google.script.run.withSuccessHandler(() => showToast("Marked: "+d, "success")).recordScan(s, d.trim());
+      }).catch(e => showToast("No QR found", "error"));
     }
 
-    function restartCamera() {
-      document.getElementById('cameraBtn').style.display = 'none';
-      document.getElementById('fileBtnContainer').style.display = 'block';
-      startScanner();
-    }
-
-    function onScanSuccess(d) { 
-      const now=Date.now(); 
-      if(now-lastScannedTime<2000)return; 
-      const s=document.getElementById("sheetSelectorScan").value; 
-      if(!s) return showToast("Select Class", "error"); 
+    // --- V75 VALUES-ONLY EXCEL EXPORT ---
+    function downloadExcelReport() {
+      const s = document.getElementById("sheetSelectorSearch").value;
+      if (!s || s === "Select...") return showToast("Select a class first", "error");
       
-      if(validStudents.size>0 && !validStudents.has(d.trim())) { 
-        lastScannedTime=now; 
-        return showToast("Not in class", "error"); 
-      } 
-      
-      lastScannedTime=now; 
-      showToast("Scanned: "+d, "success"); 
-      google.script.run.recordScan(s,d.trim(),currentLateTime); 
-    }
-
-    function downloadSearchQR() { const s = document.getElementById("searchQrImg").src; const n = document.getElementById("searchResultName").innerText; if(s && n) saveAs(s, n + "_QR.jpg"); }
-    function downloadSingleQR() { const s = document.getElementById("regQrImg").src; const n = document.getElementById("regNameDisplay").innerText; if(s && n) saveAs(s, n + "_QR.jpg"); }
-
-    // ==========================================
-    // BACKEND COMMUNICATION WITH ZIP FIXES
-    // ==========================================
-
-    function handleRegister() { 
-      const s=document.getElementById("sheetSelectorReg").value; 
-      const n=document.getElementById("regName").value; 
-      const g=document.getElementById("regGender").value; 
-      if(!s||!n) return showToast("Missing info", "error"); 
-      const btn=document.getElementById('btnReg'); 
-      btn.innerText="Processing..."; btn.disabled=true; 
-      document.getElementById("regResult").style.display="none"; 
+      const btn = document.getElementById("btnDownloadExcel");
+      btn.innerText = "Extracting Values..."; btn.disabled = true;
       
       google.script.run
-        .withSuccessHandler(async r=>{ 
-          btn.innerText="Register Student"; btn.disabled=false; 
-          if(r.success){ 
-            if(r.count===0){ alert("The name is already registered."); return; } 
-            showToast("Registered!", "success"); 
-            const stu=r.addedStudents[0]; 
-            document.getElementById("regName").value=""; 
-            if(s===document.getElementById("sheetSelectorSearch").value){ 
-              validStudents.add(stu.name); studentListCache.push(stu.name); 
-              const d=document.getElementById('rosterContainer'); 
-              const i=document.createElement('div'); i.className='roster-item'; i.innerText=stu.name; i.onclick=()=>selectStudent(stu.name); d.appendChild(i); 
-            } 
-            const qrData = await generateQrWithLabel(stu.name, stu.name); 
-            document.getElementById("regQrImg").src = qrData; 
-            document.getElementById("regNameDisplay").innerText = stu.name; 
-            document.getElementById("regKeyDisplay").innerText = stu.key; 
-            document.getElementById("regResult").style.display="block"; 
-          } else { showToast(r.message, "error"); } 
-        })
-        .withFailureHandler(e=>{ btn.innerText="Register Student"; btn.disabled=false; showToast("Error: "+e, "error"); })
-        .registerStudent(s,n,g); 
-    }
-
-    // FIXED BULK REGISTER (ZIP ERROR CATCHER)
-    function handleBulkRegister() { 
-      const s = document.getElementById("sheetSelectorBulk").value; 
-      const m = document.getElementById("bulkMales").value.split('\n'); 
-      const f = document.getElementById("bulkFemales").value.split('\n'); 
-      if(!s) return showToast("Select Class", "error"); 
-      
-      const btn = document.getElementById('btnBulk'); 
-      btn.innerText = "Registering & Building ZIP..."; 
-      btn.disabled = true; 
-      
-      google.script.run
-        .withSuccessHandler(async r => { 
-          if(r.success) { 
-            if(r.addedStudents.length === 0) { 
-              showToast("No new students added. (Duplicates skipped)", "error"); 
-            } else { 
-              showToast(`Registered ${r.addedStudents.length}! Creating ZIP...`, "success");
-              try {
-                const zip = new JSZip(); 
-                for (const st of r.addedStudents) { 
-                  const qrData = await generateQrWithLabel(st.name, st.name); 
-                  const clean = qrData.split(',')[1]; 
-                  zip.file(st.name + ".jpg", clean, {base64: true}); 
-                } 
-                const content = await zip.generateAsync({type: "blob"}); 
-                saveAs(content, s + "_QRCodes.zip"); 
-                showToast("ZIP Downloaded Successfully!", "success"); 
-              } catch (err) {
-                alert("ZIP Creation Failed: " + err.message);
-                console.error(err);
-              }
-            } 
-          } else { 
-            showToast(r.message, "error"); 
-          } 
-          btn.innerText = "Generate & ZIP"; 
-          btn.disabled = false; 
-        })
-        .withFailureHandler(e => { 
-          alert("Error: " + e); 
-          btn.innerText = "Generate & ZIP"; 
-          btn.disabled = false; 
-        })
-        .bulkRegisterStudents(s, m, f); 
-    }
-
-    // FIXED PER SEMESTER (ZIP ERROR CATCHER)
-    function createSemester() { 
-      const sub=document.getElementById('semSubject').value, sec=document.getElementById('semSection').value, fM=document.getElementById('semFromMonth').value, fY=document.getElementById('semFromYear').value, tM=document.getElementById('semToMonth').value, tY=document.getElementById('semToYear').value, bMales=document.getElementById('semMales').value, bFemales=document.getElementById('semFemales').value; 
-      if(!sub||!sec) return showToast("Enter Subject & Section", "error"); 
-      const btn=document.getElementById('btnSem'); const originalText=btn.innerText; btn.innerText="Creating Timeline..."; btn.disabled=true; 
-      
-      google.script.run
-        .withSuccessHandler(async res => { 
-          btn.innerText=originalText; btn.disabled=false; 
-          if(res.success){ 
-            showToast(res.message,"success"); alert(res.message); 
-            document.getElementById('semSubject').value=""; document.getElementById('semSection').value=""; document.getElementById('semMales').value=""; document.getElementById('semFemales').value=""; 
-            google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); 
+        .withSuccessHandler(res => {
+          if (res.success) {
+            btn.innerText = "Building Excel File...";
             
-            if(res.students && res.students.length > 0) {
-               showToast("Generating ZIP...", "success");
-               try {
-                 const zip = new JSZip();
-                 for(const st of res.students){
-                   const qrData = await generateQrWithLabel(st.name, st.name);
-                   const clean = qrData.split(',')[1];
-                   zip.file(st.name + ".jpg", clean, {base64: true});
-                 }
-                 const content = await zip.generateAsync({type:"blob"});
-                 saveAs(content, sub + "_" + sec + "_QRCodes.zip");
-                 showToast("QRs Downloaded!", "success");
-               } catch(err) { alert("ZIP Error: " + err.message); }
-            }
-          } else { showToast(res.message,"error"); } 
+            // Convert the raw 2D array of values into an Excel worksheet
+            const worksheet = XLSX.utils.aoa_to_sheet(res.data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+            
+            // Download the frozen-values .xlsx file directly
+            XLSX.writeFile(workbook, s + "_Values_Only.xlsx");
+            
+            showToast("Excel Downloaded!", "success");
+            btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+          } else {
+            alert("Error: " + res.message);
+            btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+          }
         })
-        .createBatchMonthlySheets(teacherUser,sub,sec,fM,fY,tM,tY,bMales,bFemales); 
-    }
-    
-      function downloadReport() {
-  const s = document.getElementById("sheetSelectorSearch").value;
-  if (!s) return showToast("Please select a class first", "error");
-  
-  showToast("Preparing PDF...", "success");
-  
-  google.script.run.withSuccessHandler(res => {
-    if (res.success) {
-      // Create an invisible link and click it to trigger the download
-      const link = document.createElement('a');
-      link.href = res.url;
-      link.target = '_blank';
-      link.download = s + "_Report.pdf";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
-      alert("Error: " + res.message);
-    }
-  }).downloadReport(s);
-}
-    function loadDeleteList() { const c=document.getElementById('deleteListContainer'); c.innerHTML='Loading...'; google.script.run.withSuccessHandler(l=>{ c.innerHTML=''; if(l.length===0) c.innerHTML='No classes.'; l.forEach(cls=>{ const clean=cls.startsWith(teacherUser.toLowerCase()+"_")?cls.substring(teacherUser.length+1):cls; c.innerHTML+=`<div class="delete-row"><div style="font-weight:500">${clean}</div><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`; }); }).getTeacherClasses(teacherUser); }
-    function triggerDelete(n) { if(!confirm("Permanently delete?")) return; document.getElementById('deleteListContainer').innerHTML='Deleting...'; google.script.run.withSuccessHandler(r=>{ showToast(r.message,r.success?"success":"error"); loadDeleteList(); google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); }).deleteClassSheet(n,teacherUser,'teacher'); }
-    function populateSelectors(l) { const ids=["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"]; ids.forEach(id=>{ const e=document.getElementById(id); e.innerHTML=''; if(!l||l.length===0){ e.add(new Option("No Classes Found", "")); }else{ e.add(new Option("Select...", "")); l.forEach(n=>{ const c=n.startsWith(teacherUser.toLowerCase()+"_")?n.substring(teacherUser.length+1):n; e.add(new Option(c,n)); }); } }); if(!html5QrCode || !html5QrCode.isScanning) startScanner(); }
-    function syncSelectors(v) { ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id=>document.getElementById(id).value=v); }
-    function loadClassCache(n) { if(!n)return; const d=document.getElementById('rosterContainer'); d.style.display='block'; d.innerHTML='Loading...'; validStudents.clear(); studentListCache=[]; google.script.run.withSuccessHandler(l=>{ d.innerHTML=''; l.forEach(name=>{ validStudents.add(name); studentListCache.push(name); const i=document.createElement('div'); i.className='roster-item'; i.innerText=name; i.onclick=()=>selectStudent(name); d.appendChild(i); }); }).getStudentList(n); }
-    function filterStudents(q) { const items=document.querySelectorAll('.roster-item'); q=q.toLowerCase(); items.forEach(i=>{ i.style.display=i.innerText.toLowerCase().includes(q)?'block':'none'; }); }
-    function selectStudent(n) { document.getElementById('searchName').value=n; handleSearch(); }
-    
-    function handleSearch() { 
-      const s=document.getElementById("sheetSelectorSearch").value; const n=document.getElementById("searchName").value; 
-      google.script.run.withSuccessHandler(async r=>{ 
-        if(r.success){ 
-          currentSearchResult=r; document.getElementById("searchResult").style.display="block"; 
-          document.getElementById("searchResultName").innerText=r.name; document.getElementById("searchResultKey").innerText=r.key; 
-          document.getElementById("statPresent").innerText=r.present; document.getElementById("statLate").innerText=r.late; document.getElementById("statAbsent").innerText=r.absent; 
-          document.getElementById("editForm").style.display="none"; 
-          try { document.getElementById("searchQrImg").src=await generateQrWithLabel(r.name, r.name); } catch(e) {}
-        } else { alert("Student not found."); }
-      }).withFailureHandler(e => alert("Search failed: " + e)).searchStudent(s,n); 
+        .withFailureHandler(err => {
+          alert("Connection Error: " + err);
+          btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+        })
+        .getReportValues(s);
     }
 
-    function saveStudentEdit() { const s=document.getElementById("sheetSelectorSearch").value; const nn=document.getElementById("editNameInput").value; if(!nn)return; google.script.run.withSuccessHandler(r=>{ showToast(r.message,r.success?"success":"error"); if(r.success) handleSearch(); }).updateStudent(s,currentSearchResult.name,nn,"Male"); }
-    function deleteCurrentStudent() { if(confirm("Delete?")) google.script.run.withSuccessHandler(r=>{ showToast(r.message,r.success?"success":"error"); document.getElementById("searchResult").style.display="none"; }).deleteStudent(document.getElementById("sheetSelectorSearch").value,currentSearchResult.name); }
-    function saveSettings() { currentLateTime=document.getElementById("lateTimeInput").value; document.getElementById("lateStatus").innerText=currentLateTime?`Late: ${currentLateTime}`:"Late Time: OFF"; document.getElementById("settingsModal").style.display='none'; }
-    function openSettings() { document.getElementById("settingsModal").style.display='flex'; }
-    function generateQrWithLabel(v,l) { return new Promise(r=>{ const c=document.createElement('canvas'); const s=500; c.width=s; c.height=s+80; const x=c.getContext('2d'); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.fillStyle="#000"; let fs=40; x.font=`bold ${fs}px Arial`; const maxW=s-40; while(x.measureText(l).width>maxW&&fs>10){fs--;x.font=`bold ${fs}px Arial`;} x.textAlign="center"; x.textBaseline="middle"; x.fillText(l,s/2,40); const q=new QRious({value:v.trim(),size:400,level:'H'}); const i=new Image(); i.onload=()=>{ x.drawImage(i,50,80,400,400); r(c.toDataURL()); }; i.src=q.toDataURL(); }); }
-    function showToast(m,t) { const el=document.getElementById("toast"); el.innerText=m; el.className=t==="error"?"toast-error":"toast-success"; el.style.display="block"; setTimeout(()=>el.style.display="none",3000); }
-    function initDatePickers() { const m=["January","February","March","April","May","June","July","August","September","October","November","December"]; const y=[2026,2027,2028,2029,2030]; ["semFromMonth","semToMonth"].forEach(id=>{ const e=document.getElementById(id); m.forEach(v=>e.add(new Option(v,v))); }); ["semFromYear","semToYear"].forEach(id=>{ const e=document.getElementById(id); y.forEach(v=>e.add(new Option(v,v))); }); }
+    async function handleBulkRegister() {
+      const s = document.getElementById("sheetSelectorBulk").value;
+      const m = document.getElementById("bulkMales").value.split('\n');
+      const f = document.getElementById("bulkFemales").value.split('\n');
+      const btn = document.getElementById('btnBulk'); btn.innerText="Processing..."; btn.disabled=true;
+      google.script.run.withSuccessHandler(async r => {
+        if(r.success && r.addedStudents.length > 0) {
+          const zip = new JSZip();
+          for(const st of r.addedStudents){
+            const qrData = await generateQrWithLabel(st.name, st.name);
+            zip.file(st.name + ".jpg", qrData.split(',')[1], {base64: true});
+          }
+          const content = await zip.generateAsync({type:"blob"});
+          saveAs(content, s + "_QRCodes.zip");
+        }
+        btn.innerText="Generate & ZIP"; btn.disabled=false;
+      }).bulkRegisterStudents(s, m, f);
+    }
+
+    function handleRegister() {
+      const s=document.getElementById("sheetSelectorReg").value; const n=document.getElementById("regName").value;
+      google.script.run.withSuccessHandler(async r => {
+        if(r.success){
+          const stu=r.addedStudents[0]; const qrData=await generateQrWithLabel(stu.name, stu.name);
+          document.getElementById("regQrImg").src = qrData; document.getElementById("regNameDisplay").innerText = stu.name;
+          document.getElementById("regResult").style.display="block";
+        }
+      }).registerStudent(s, n, "Male");
+    }
+
+    function loadClassCache(n) {
+      google.script.run.withSuccessHandler(l => {
+        const c = document.getElementById('rosterContainer'); c.innerHTML = ''; c.style.display='block';
+        validStudents.clear();
+        l.forEach(name => {
+          validStudents.add(name);
+          const div = document.createElement('div'); div.className='roster-item'; div.innerText=name;
+          div.onclick = () => { document.getElementById('searchName').value = name; handleSearch(); };
+          c.appendChild(div);
+        });
+      }).getStudentList(n);
+    }
+
+    function handleSearch() {
+      const s = document.getElementById("sheetSelectorSearch").value; const n = document.getElementById("searchName").value;
+      google.script.run.withSuccessHandler(r => {
+        if(r.success) {
+          document.getElementById('searchResult').style.display = 'block';
+          document.getElementById('searchResultName').innerText = r.name;
+          document.getElementById('statPresent').innerText = r.present;
+          document.getElementById('statLate').innerText = r.late;
+          document.getElementById('statAbsent').innerText = r.absent;
+        }
+      }).searchStudent(s, n);
+    }
+
+    function generateQrWithLabel(v,l) {
+      return new Promise(r=>{
+        const c=document.createElement('canvas'); c.width=500; c.height=580; const x=c.getContext('2d');
+        x.fillStyle="#fff"; x.fillRect(0,0,500,580); x.fillStyle="#000"; x.font="bold 40px Arial"; x.textAlign="center"; x.fillText(l,250,40);
+        const q=new QRious({value:v.trim(),size:400,level:'H'});
+        const i=new Image(); i.onload=()=>{ x.drawImage(i,50,80,400,400); r(c.toDataURL()); }; i.src=q.toDataURL();
+      });
+    }
+
+    function loadDeleteList() {
+      google.script.run.withSuccessHandler(l => {
+        const c = document.getElementById('deleteListContainer'); c.innerHTML = '';
+        l.forEach(cls => {
+          c.innerHTML += `<div class="delete-row"><span>${cls}</span><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`;
+        });
+      }).getTeacherClasses(teacherUser);
+    }
+
+    function triggerDelete(n) { if(confirm("Delete?")) google.script.run.withSuccessHandler(loadDeleteList).deleteClassSheet(n, teacherUser, 'teacher'); }
+    function populateSelectors(l) {
+      ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id => {
+        const e=document.getElementById(id); e.innerHTML='<option>Select...</option>';
+        l.forEach(n => e.add(new Option(n, n)));
+      });
+    }
+    function logout() { window.location.href = API_URL + "?page=login"; }
+    function goToCreator() { window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token); }
+    function syncSelectors(v) { ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id=>document.getElementById(id).value=v); }
+    function showToast(m, t) { const el=document.getElementById("toast"); el.innerText=m; el.style.display="block"; setTimeout(()=>el.style.display="none",3000); }
+    function filterStudents(q) { const items=document.querySelectorAll('.roster-item'); items.forEach(i=>i.style.display=i.innerText.toLowerCase().includes(q.toLowerCase())?'block':'none'); }
+    function initDatePickers() {
+      const m=["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const y=[2026,2027,2028,2029,2030];
+      ["semFromMonth","semToMonth"].forEach(id=>m.forEach(v=>document.getElementById(id).add(new Option(v,v))));
+      ["semFromYear","semToYear"].forEach(id=>y.forEach(v=>document.getElementById(id).add(new Option(v,v))));
+    }
   </script>
 </body>
 </html>
