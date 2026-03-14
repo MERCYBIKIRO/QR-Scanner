@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root { --primary: #4f46e5; --bg-gradient: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); --text-main: #111827; --scan-bg-dark: #111827; --btn-purple: #6366f1; --btn-dark: #1f2937; }
@@ -223,7 +223,6 @@
       }
     };
 
-    // FIXED ROUTING
     function goToCreator() {
       window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token);
     }
@@ -317,6 +316,10 @@
     function downloadSearchQR() { const s = document.getElementById("searchQrImg").src; const n = document.getElementById("searchResultName").innerText; if(s && n) saveAs(s, n + "_QR.jpg"); }
     function downloadSingleQR() { const s = document.getElementById("regQrImg").src; const n = document.getElementById("regNameDisplay").innerText; if(s && n) saveAs(s, n + "_QR.jpg"); }
 
+    // ==========================================
+    // BACKEND COMMUNICATION WITH ZIP FIXES
+    // ==========================================
+
     function handleRegister() { 
       const s=document.getElementById("sheetSelectorReg").value; 
       const n=document.getElementById("regName").value; 
@@ -350,23 +353,86 @@
         .registerStudent(s,n,g); 
     }
 
+    // FIXED BULK REGISTER (ZIP ERROR CATCHER)
+    function handleBulkRegister() { 
+      const s = document.getElementById("sheetSelectorBulk").value; 
+      const m = document.getElementById("bulkMales").value.split('\n'); 
+      const f = document.getElementById("bulkFemales").value.split('\n'); 
+      if(!s) return showToast("Select Class", "error"); 
+      
+      const btn = document.getElementById('btnBulk'); 
+      btn.innerText = "Registering & Building ZIP..."; 
+      btn.disabled = true; 
+      
+      google.script.run
+        .withSuccessHandler(async r => { 
+          if(r.success) { 
+            if(r.addedStudents.length === 0) { 
+              showToast("No new students added. (Duplicates skipped)", "error"); 
+            } else { 
+              showToast(`Registered ${r.addedStudents.length}! Creating ZIP...`, "success");
+              try {
+                const zip = new JSZip(); 
+                for (const st of r.addedStudents) { 
+                  const qrData = await generateQrWithLabel(st.name, st.name); 
+                  const clean = qrData.split(',')[1]; 
+                  zip.file(st.name + ".jpg", clean, {base64: true}); 
+                } 
+                const content = await zip.generateAsync({type: "blob"}); 
+                saveAs(content, s + "_QRCodes.zip"); 
+                showToast("ZIP Downloaded Successfully!", "success"); 
+              } catch (err) {
+                alert("ZIP Creation Failed: " + err.message);
+                console.error(err);
+              }
+            } 
+          } else { 
+            showToast(r.message, "error"); 
+          } 
+          btn.innerText = "Generate & ZIP"; 
+          btn.disabled = false; 
+        })
+        .withFailureHandler(e => { 
+          alert("Error: " + e); 
+          btn.innerText = "Generate & ZIP"; 
+          btn.disabled = false; 
+        })
+        .bulkRegisterStudents(s, m, f); 
+    }
+
+    // FIXED PER SEMESTER (ZIP ERROR CATCHER)
     function createSemester() { 
       const sub=document.getElementById('semSubject').value, sec=document.getElementById('semSection').value, fM=document.getElementById('semFromMonth').value, fY=document.getElementById('semFromYear').value, tM=document.getElementById('semToMonth').value, tY=document.getElementById('semToYear').value, bMales=document.getElementById('semMales').value, bFemales=document.getElementById('semFemales').value; 
       if(!sub||!sec) return showToast("Enter Subject & Section", "error"); 
       const btn=document.getElementById('btnSem'); const originalText=btn.innerText; btn.innerText="Creating Timeline..."; btn.disabled=true; 
+      
       google.script.run
-        .withSuccessHandler(async res=>{ 
+        .withSuccessHandler(async res => { 
           btn.innerText=originalText; btn.disabled=false; 
           if(res.success){ 
             showToast(res.message,"success"); alert(res.message); 
             document.getElementById('semSubject').value=""; document.getElementById('semSection').value=""; document.getElementById('semMales').value=""; document.getElementById('semFemales').value=""; 
             google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); 
+            
+            if(res.students && res.students.length > 0) {
+               showToast("Generating ZIP...", "success");
+               try {
+                 const zip = new JSZip();
+                 for(const st of res.students){
+                   const qrData = await generateQrWithLabel(st.name, st.name);
+                   const clean = qrData.split(',')[1];
+                   zip.file(st.name + ".jpg", clean, {base64: true});
+                 }
+                 const content = await zip.generateAsync({type:"blob"});
+                 saveAs(content, sub + "_" + sec + "_QRCodes.zip");
+                 showToast("QRs Downloaded!", "success");
+               } catch(err) { alert("ZIP Error: " + err.message); }
+            }
           } else { showToast(res.message,"error"); } 
         })
         .createBatchMonthlySheets(teacherUser,sub,sec,fM,fY,tM,tY,bMales,bFemales); 
     }
 
-    function handleBulkRegister() { const s=document.getElementById("sheetSelectorBulk").value; const m=document.getElementById("bulkMales").value.split('\n'); const f=document.getElementById("bulkFemales").value.split('\n'); if(!s) return showToast("Select Class", "error"); const btn=document.getElementById('btnBulk'); btn.innerText="Processing..."; btn.disabled=true; google.script.run.withSuccessHandler(async r=>{ if(r.success){ if(r.addedStudents.length===0){ showToast("No new students added.", "error"); }else{ showToast(`Added ${r.addedStudents.length} (Duplicates Skipped)`, "success"); } }else{ showToast(r.message,"error"); } btn.innerText="Generate & ZIP"; btn.disabled=false; }).withFailureHandler(e=>{ alert("Error: "+e); btn.disabled=false; }).bulkRegisterStudents(s,m,f); }
     function loadDeleteList() { const c=document.getElementById('deleteListContainer'); c.innerHTML='Loading...'; google.script.run.withSuccessHandler(l=>{ c.innerHTML=''; if(l.length===0) c.innerHTML='No classes.'; l.forEach(cls=>{ const clean=cls.startsWith(teacherUser.toLowerCase()+"_")?cls.substring(teacherUser.length+1):cls; c.innerHTML+=`<div class="delete-row"><div style="font-weight:500">${clean}</div><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`; }); }).getTeacherClasses(teacherUser); }
     function triggerDelete(n) { if(!confirm("Permanently delete?")) return; document.getElementById('deleteListContainer').innerHTML='Deleting...'; google.script.run.withSuccessHandler(r=>{ showToast(r.message,r.success?"success":"error"); loadDeleteList(); google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); }).deleteClassSheet(n,teacherUser,'teacher'); }
     function populateSelectors(l) { const ids=["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"]; ids.forEach(id=>{ const e=document.getElementById(id); e.innerHTML=''; if(!l||l.length===0){ e.add(new Option("No Classes Found", "")); }else{ e.add(new Option("Select...", "")); l.forEach(n=>{ const c=n.startsWith(teacherUser.toLowerCase()+"_")?n.substring(teacherUser.length+1):n; e.add(new Option(c,n)); }); } }); if(!html5QrCode || !html5QrCode.isScanning) startScanner(); }
