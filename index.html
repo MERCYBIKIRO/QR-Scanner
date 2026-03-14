@@ -432,7 +432,28 @@
         })
         .createBatchMonthlySheets(teacherUser,sub,sec,fM,fY,tM,tY,bMales,bFemales); 
     }
-
+    
+      function downloadReport() {
+  const s = document.getElementById("sheetSelectorSearch").value;
+  if (!s) return showToast("Please select a class first", "error");
+  
+  showToast("Preparing PDF...", "success");
+  
+  google.script.run.withSuccessHandler(res => {
+    if (res.success) {
+      // Create an invisible link and click it to trigger the download
+      const link = document.createElement('a');
+      link.href = res.url;
+      link.target = '_blank';
+      link.download = s + "_Report.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert("Error: " + res.message);
+    }
+  }).downloadReport(s);
+}
     function loadDeleteList() { const c=document.getElementById('deleteListContainer'); c.innerHTML='Loading...'; google.script.run.withSuccessHandler(l=>{ c.innerHTML=''; if(l.length===0) c.innerHTML='No classes.'; l.forEach(cls=>{ const clean=cls.startsWith(teacherUser.toLowerCase()+"_")?cls.substring(teacherUser.length+1):cls; c.innerHTML+=`<div class="delete-row"><div style="font-weight:500">${clean}</div><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`; }); }).getTeacherClasses(teacherUser); }
     function triggerDelete(n) { if(!confirm("Permanently delete?")) return; document.getElementById('deleteListContainer').innerHTML='Deleting...'; google.script.run.withSuccessHandler(r=>{ showToast(r.message,r.success?"success":"error"); loadDeleteList(); google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); }).deleteClassSheet(n,teacherUser,'teacher'); }
     function populateSelectors(l) { const ids=["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"]; ids.forEach(id=>{ const e=document.getElementById(id); e.innerHTML=''; if(!l||l.length===0){ e.add(new Option("No Classes Found", "")); }else{ e.add(new Option("Select...", "")); l.forEach(n=>{ const c=n.startsWith(teacherUser.toLowerCase()+"_")?n.substring(teacherUser.length+1):n; e.add(new Option(c,n)); }); } }); if(!html5QrCode || !html5QrCode.isScanning) startScanner(); }
