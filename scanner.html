@@ -161,17 +161,16 @@
     // V74 EXTERNAL API PROXY & SETUP
     // ==========================================
     
-    // IMPORTANT: Web App URL (from doPost) loaded
+    // THE MASTER CONNECTION LINK
     const API_URL = "https://script.google.com/macros/s/AKfycbx-jTf1V9GgqTommi_DgK42u6dTyFptrM_9aIpTgyXMxephVJQBmslzV4_EzWwvzSs0/exec"; 
     
-    // Extract Token securely from standard URL Parameters
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token') || "";
 
     let teacherUser="", teacherName="";
     try{ const d=atob(decodeURIComponent(token)).split(":"); teacherUser=d[0]; teacherName=d[1]; }catch(e){}
 
-    // THE MAGIC PROXY: Converts old google.script.run calls to standard fetch() requests
+    // UPGRADED MAGIC PROXY: Includes Error Catching for Un-deployed Backends
     const createRunner = (successCb, failureCb) => {
       return new Proxy({}, {
         get: function(_, funcName) {
@@ -181,12 +180,18 @@
             fetch(API_URL, {
               method: 'POST',
               body: JSON.stringify({ action: funcName, args: args }),
-              headers: { 'Content-Type': 'text/plain' } // Bypasses strict CORS
+              headers: { 'Content-Type': 'text/plain' } 
             })
-            .then(r => r.json())
-            .then(data => {
-              if (data.success && successCb) successCb(data.result);
-              else if (!data.success && failureCb) failureCb(data.error);
+            .then(async r => {
+              const text = await r.text();
+              try {
+                const data = JSON.parse(text);
+                if (data.success && successCb) successCb(data.result);
+                else if (!data.success && failureCb) failureCb(data.error);
+              } catch(e) {
+                console.error("Backend did not return JSON. Response:", text);
+                if (failureCb) failureCb("Backend connection failed! (Please see Step 2 instructions)");
+              }
             })
             .catch(err => { if(failureCb) failureCb(err); });
           }
@@ -194,42 +199,47 @@
       });
     };
     
-    // Override the global object so your original code thinks it's still inside Apps Script
     const google = { script: { run: createRunner(null, null) } };
 
 
     // ==========================================
-    // SCANNER & UI LOGIC (V74 Optimized)
+    // SCANNER & UI LOGIC
     // ==========================================
 
-    let html5QrCode = null, validStudents=new Set(), studentListCache=[], lastScannedTime=0, currentLateTime=null, currentSearchResult=null, CACHED_URL="";
+    let html5QrCode = null, validStudents=new Set(), studentListCache=[], lastScannedTime=0, currentLateTime=null, currentSearchResult=null;
     const months=["January","February","March","April","May","June","July","August","September","October","November","December"];
     const years=[2026,2027,2028,2029,2030];
 
     window.onload = function() {
       initDatePickers();
-      google.script.run.withSuccessHandler(url => CACHED_URL=url).getScriptUrl();
 
       if(!teacherUser){ 
-        alert("Session Invalid. Please Login via the main portal first."); 
-        // Redirect to a fallback login if needed, though they shouldn't land here without a token
+        alert("Session Invalid. Redirecting to Login."); 
+        window.location.href = API_URL + "?page=login";
       }
       else {
         document.getElementById('welcomeHeader').innerText = `👋 ${teacherName}`;
         google.script.run
           .withSuccessHandler(populateSelectors)
           .withFailureHandler(err => {
-             alert("Startup Error: " + err);
+             alert(err);
              const ids=["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"];
-             ids.forEach(id=>document.getElementById(id).innerHTML='<option>Error Loading</option>');
+             ids.forEach(id=>document.getElementById(id).innerHTML='<option>Error Connecting</option>');
           })
           .getTeacherClasses(teacherUser);
       }
     };
 
+    // THIS IS FIXED TO SEND YOU BACK TO THE MAIN SYSTEM FOR CREATION
     function goToCreator() {
-      // In external mode, the creator tab is accessed via the main Apps Script app
-      alert("Please return to the main Dashboard to create a new Class.");
+      window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token);
+    }
+
+    // THIS IS FIXED TO LOG YOU OUT PROPERLY
+    function logout() { 
+      if(confirm("Log out?")) { 
+        window.location.href = API_URL + "?page=login"; 
+      } 
     }
 
     function switchTab(t) {
@@ -265,7 +275,6 @@
         { fps: 15, qrbox: { width: 250, height: 250 } },
         onScanSuccess
       ).catch(err => {
-        // Clean error UI if they didn't grant permission to the external site
         document.getElementById('reader').innerHTML = `
           <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 20px; width: 90%; max-width: 320px; text-align: center; margin: 0 auto;">
             <h3 style="color: #dc2626; margin: 0 0 10px 0;">📷 Camera Blocked!</h3>
@@ -425,7 +434,6 @@
     function openSettings() { document.getElementById("settingsModal").style.display='flex'; }
     function generateQrWithLabel(v,l) { return new Promise(r=>{ const c=document.createElement('canvas'); const s=500; c.width=s; c.height=s+80; const x=c.getContext('2d'); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.fillStyle="#000"; let fs=40; x.font=`bold ${fs}px Arial`; const maxW=s-40; while(x.measureText(l).width>maxW&&fs>10){fs--;x.font=`bold ${fs}px Arial`;} x.textAlign="center"; x.textBaseline="middle"; x.fillText(l,s/2,40); const q=new QRious({value:v.trim(),size:400,level:'H'}); const i=new Image(); i.onload=()=>{ x.drawImage(i,50,80,400,400); r(c.toDataURL()); }; i.src=q.toDataURL(); }); }
     function showToast(m,t) { const el=document.getElementById("toast"); el.innerText=m; el.className=t==="error"?"toast-error":"toast-success"; el.style.display="block"; setTimeout(()=>el.style.display="none",3000); }
-    function logout() { if(confirm("Log out?")) { window.location.href="https://google.com"; } }
     function initDatePickers() { const m=["January","February","March","April","May","June","July","August","September","October","November","December"]; const y=[2026,2027,2028,2029,2030]; ["semFromMonth","semToMonth"].forEach(id=>{ const e=document.getElementById(id); m.forEach(v=>e.add(new Option(v,v))); }); ["semFromYear","semToYear"].forEach(id=>{ const e=document.getElementById(id); y.forEach(v=>e.add(new Option(v,v))); }); }
   </script>
 </body>
