@@ -171,7 +171,6 @@
       }).catch(e => showToast("No QR found", "error"));
     }
 
-    // --- V75 VALUES-ONLY EXCEL EXPORT ---
     function downloadExcelReport() {
       const s = document.getElementById("sheetSelectorSearch").value;
       if (!s || s === "Select...") return showToast("Select a class first", "error");
@@ -183,15 +182,10 @@
         .withSuccessHandler(res => {
           if (res.success) {
             btn.innerText = "Building Excel File...";
-            
-            // Convert the raw 2D array of values into an Excel worksheet
             const worksheet = XLSX.utils.aoa_to_sheet(res.data);
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
-            
-            // Download the frozen-values .xlsx file directly
             XLSX.writeFile(workbook, s + "_Values_Only.xlsx");
-            
             showToast("Excel Downloaded!", "success");
             btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
           } else {
@@ -271,22 +265,30 @@
       });
     }
 
+    // --- RESTORED: CLEAN UI NAMES FOR DELETE LIST ---
     function loadDeleteList() {
       google.script.run.withSuccessHandler(l => {
         const c = document.getElementById('deleteListContainer'); c.innerHTML = '';
         l.forEach(cls => {
-          c.innerHTML += `<div class="delete-row"><span>${cls}</span><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`;
+          const cleanName = cls.startsWith(teacherUser.toLowerCase() + "_") ? cls.substring(teacherUser.length + 1) : cls;
+          c.innerHTML += `<div class="delete-row"><span>${cleanName}</span><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`;
         });
       }).getTeacherClasses(teacherUser);
     }
 
     function triggerDelete(n) { if(confirm("Delete?")) google.script.run.withSuccessHandler(loadDeleteList).deleteClassSheet(n, teacherUser, 'teacher'); }
+    
+    // --- RESTORED: CLEAN UI NAMES FOR ALL DROPDOWNS ---
     function populateSelectors(l) {
       ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id => {
         const e=document.getElementById(id); e.innerHTML='<option>Select...</option>';
-        l.forEach(n => e.add(new Option(n, n)));
+        l.forEach(n => {
+          const cleanName = n.startsWith(teacherUser.toLowerCase() + "_") ? n.substring(teacherUser.length + 1) : n;
+          e.add(new Option(cleanName, n));
+        });
       });
     }
+
     function logout() { window.location.href = API_URL + "?page=login"; }
     function goToCreator() { window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token); }
     function syncSelectors(v) { ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id=>document.getElementById(id).value=v); }
