@@ -1,55 +1,386 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>V75 Thunder Scanner</title>
+  <title>V78 Thunder Scanner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  
   <script src="https://unpkg.com/html5-qrcode" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
   <style>
-    :root { --primary: #4f46e5; --bg-gradient: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); --text-main: #111827; --scan-bg-dark: #111827; --btn-purple: #6366f1; --btn-dark: #1f2937; }
-    body { font-family: 'Inter', sans-serif; padding: 20px; background: var(--bg-gradient); color: var(--text-main); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-    .nav-tabs { display: flex; width: 100%; max-width: 550px; background: #fff; padding: 6px; margin-bottom: 24px; border-radius: 16px; position: sticky; top: 10px; z-index: 100; box-shadow: 0 4px 6px rgba(0,0,0,0.05); overflow-x: auto; }
-    .nav-btn { flex: 1; border: none; background: transparent; padding: 10px; font-weight: 600; cursor: pointer; border-radius: 12px; transition: 0.2s; font-size: 0.85rem; white-space: nowrap; }
-    .nav-btn.active { color: #fff; background: var(--primary); }
-    .container { width: 100%; max-width: 500px; display: none; flex-direction: column; }
-    .container.active { display: flex; }
-    .main-card { background: #fff; border-radius: 28px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-    .card-header { padding: 25px; position: relative; display: flex; flex-direction: column; gap: 15px; }
-    .header-top-row { display: flex; justify-content: space-between; align-items: center; }
-    .icon-btn { cursor: pointer; background: #f3f4f6; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-    h2 { margin: 0; font-size: 1.6rem; color: #1f2937; }
-    .card-body-scanner { padding: 20px; background: var(--scan-bg-dark); height: 500px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-    #reader { width: 100%; height: 100%; border: none !important; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; } 
-    #reader video, #reader img { border-radius: 20px; max-height: 100% !important; max-width: 100% !important; object-fit: contain !important; }
-    .btn-new-class { background: #ecfdf5; color: #059669; padding: 0 12px; height: 36px; border-radius: 10px; display: flex; align-items: center; cursor: pointer; font-size: 0.8rem; font-weight: 600; border: none; z-index: 1000; }
-    .btn-new-class:hover { background: #d1fae5; }
-    .scan-file-btn { background: var(--btn-dark); color: #9ca3af; padding: 14px 30px; border-radius: 50px; font-size: 0.9rem; border: 1px solid #374151; cursor: pointer; position: absolute; bottom: 30px; overflow: hidden; font-weight: 500; z-index: 10; }
-    .scan-file-btn input { position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
-    .camera-switch-btn { background: var(--primary); color: white; padding: 14px 30px; border-radius: 50px; font-size: 0.95rem; border: none; cursor: pointer; font-weight: 600; position: absolute; bottom: 30px; box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); display: none; z-index: 10; }
-    .card-body.light { background: #f9fafb; padding: 28px; min-height: auto; display: block; }
-    select, input { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e5e7eb; box-sizing: border-box; font-size: 1rem; margin-top: 5px; }
-    textarea { width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e5e7eb; box-sizing: border-box; font-size: 1rem; margin-top: 5px; white-space: pre; overflow-x: auto; overflow-y: auto; }
-    .btn-primary { background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); color: white; border: none; padding: 15px; width: 100%; border-radius: 14px; font-weight: 600; margin-top: 15px; cursor: pointer; }
-    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
-    .btn-outline { background: white; border: 2px solid #4f46e5; color: #4f46e5; padding: 12px; width: 100%; border-radius: 12px; font-weight: 600; margin-top: 15px; cursor: pointer; transition: 0.2s; }
-    .btn-outline:hover { background: #eef2ff; }
-    #rosterContainer { width: 100%; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #e5e7eb; border-radius: 12px; margin-top: 15px; text-align: left; display: none; }
-    .roster-item { padding: 12px 15px; border-bottom: 1px solid #f3f4f6; cursor: pointer; font-size: 0.95rem; white-space: nowrap; overflow-x: auto; }
-    .roster-item:hover { background: #f0f9ff; color: #4f46e5; font-weight: 600; }
-    .key-box { background: #f3f4f6; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 8px; font-family: monospace; color: #64748b; font-size: 0.85rem; margin-top: 10px; word-break: break-all; }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 20px 0; }
-    .stat-box { padding: 10px; border-radius: 10px; font-weight: bold; }
-    .delete-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f3f4f6; }
-    .del-btn-small { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; }
-    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 12px 24px; border-radius: 50px; display: none; z-index: 200; }
-    .toast-success { background: #059669 !important; } .toast-error { background: #dc2626 !important; }
+    :root { 
+      --primary: #4f46e5; 
+      --bg-gradient: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); 
+      --text-main: #111827; 
+      --scan-bg-dark: #111827; 
+      --btn-dark: #1f2937; 
+    }
+    
+    body { 
+      font-family: 'Inter', sans-serif; 
+      padding: 20px; 
+      background: var(--bg-gradient); 
+      color: var(--text-main); 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      min-height: 100vh; 
+      margin: 0; 
+    }
+    
+    .nav-tabs { 
+      display: flex; 
+      width: 100%; 
+      max-width: 550px; 
+      background: #fff; 
+      padding: 6px; 
+      margin-bottom: 24px; 
+      border-radius: 16px; 
+      position: sticky; 
+      top: 10px; 
+      z-index: 100; 
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+      overflow-x: auto; 
+    }
+    
+    .nav-btn { 
+      flex: 1; 
+      border: none; 
+      background: transparent; 
+      padding: 10px; 
+      font-weight: 600; 
+      cursor: pointer; 
+      border-radius: 12px; 
+      transition: 0.2s; 
+      font-size: 0.85rem; 
+      white-space: nowrap; 
+    }
+    
+    .nav-btn.active { 
+      color: #fff; 
+      background: var(--primary); 
+    }
+    
+    .container { 
+      width: 100%; 
+      max-width: 500px; 
+      display: none; 
+      flex-direction: column; 
+    }
+    
+    .container.active { 
+      display: flex; 
+    }
+    
+    .main-card { 
+      background: #fff; 
+      border-radius: 28px; 
+      overflow: hidden; 
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); 
+    }
+    
+    .card-header { 
+      padding: 25px; 
+      position: relative; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+    }
+    
+    .header-top-row { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+    }
+    
+    .icon-btn { 
+      cursor: pointer; 
+      background: #f3f4f6; 
+      width: 36px; 
+      height: 36px; 
+      border-radius: 10px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    
+    h2 { 
+      margin: 0; 
+      font-size: 1.6rem; 
+      color: #1f2937; 
+    }
+    
+    .card-body-scanner { 
+      padding: 20px; 
+      background: var(--scan-bg-dark); 
+      height: 500px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      position: relative; 
+      overflow: hidden; 
+    }
+    
+    #reader { 
+      width: 100%; 
+      height: 100%; 
+      border: none !important; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      overflow: hidden; 
+    } 
+    
+    #reader video, #reader img { 
+      border-radius: 20px; 
+      max-height: 100% !important; 
+      max-width: 100% !important; 
+      object-fit: contain !important; 
+    }
+    
+    .btn-new-class { 
+      background: #ecfdf5; 
+      color: #059669; 
+      padding: 0 12px; 
+      height: 36px; 
+      border-radius: 10px; 
+      display: flex; 
+      align-items: center; 
+      cursor: pointer; 
+      font-size: 0.8rem; 
+      font-weight: 600; 
+      border: none; 
+      z-index: 1000; 
+    }
+    
+    .btn-new-class:hover { 
+      background: #d1fae5; 
+    }
+    
+    .scan-file-btn { 
+      background: var(--btn-dark); 
+      color: #9ca3af; 
+      padding: 14px 30px; 
+      border-radius: 50px; 
+      font-size: 0.9rem; 
+      border: 1px solid #374151; 
+      cursor: pointer; 
+      position: absolute; 
+      bottom: 30px; 
+      overflow: hidden; 
+      font-weight: 500; 
+      z-index: 10; 
+    }
+    
+    .scan-file-btn input { 
+      position: absolute; 
+      left: 0; 
+      top: 0; 
+      opacity: 0; 
+      width: 100%; 
+      height: 100%; 
+      cursor: pointer; 
+    }
+    
+    .camera-switch-btn { 
+      background: var(--primary); 
+      color: white; 
+      padding: 14px 30px; 
+      border-radius: 50px; 
+      font-size: 0.95rem; 
+      border: none; 
+      cursor: pointer; 
+      font-weight: 600; 
+      position: absolute; 
+      bottom: 30px; 
+      box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4); 
+      display: none; 
+      z-index: 10; 
+    }
+    
+    .card-body.light { 
+      background: #f9fafb; 
+      padding: 28px; 
+      min-height: auto; 
+      display: block; 
+    }
+    
+    select, input { 
+      width: 100%; 
+      padding: 12px; 
+      border-radius: 12px; 
+      border: 2px solid #e5e7eb; 
+      box-sizing: border-box; 
+      font-size: 1rem; 
+      margin-top: 5px; 
+    }
+    
+    textarea { 
+      width: 100%; 
+      padding: 12px; 
+      border-radius: 12px; 
+      border: 2px solid #e5e7eb; 
+      box-sizing: border-box; 
+      font-size: 1rem; 
+      margin-top: 5px; 
+      white-space: pre; 
+      overflow-x: auto; 
+      overflow-y: auto; 
+    }
+    
+    .btn-primary { 
+      background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%); 
+      color: white; 
+      border: none; 
+      padding: 15px; 
+      width: 100%; 
+      border-radius: 14px; 
+      font-weight: 600; 
+      margin-top: 15px; 
+      cursor: pointer; 
+    }
+    
+    .btn-primary:disabled { 
+      background: #9ca3af; 
+      cursor: not-allowed; 
+    }
+    
+    .btn-outline { 
+      background: white; 
+      border: 2px solid #4f46e5; 
+      color: #4f46e5; 
+      padding: 12px; 
+      width: 100%; 
+      border-radius: 12px; 
+      font-weight: 600; 
+      margin-top: 15px; 
+      cursor: pointer; 
+      transition: 0.2s; 
+    }
+    
+    .btn-outline:hover { 
+      background: #eef2ff; 
+    }
+    
+    #rosterContainer { 
+      width: 100%; 
+      max-height: 250px; 
+      overflow-y: auto; 
+      background: white; 
+      border: 1px solid #e5e7eb; 
+      border-radius: 12px; 
+      margin-top: 15px; 
+      text-align: left; 
+      display: none; 
+    }
+    
+    .roster-item { 
+      padding: 12px 15px; 
+      border-bottom: 1px solid #f3f4f6; 
+      cursor: pointer; 
+      font-size: 0.95rem; 
+      white-space: nowrap; 
+      overflow-x: auto; 
+    }
+    
+    .roster-item:hover { 
+      background: #f0f9ff; 
+      color: #4f46e5; 
+      font-weight: 600; 
+    }
+    
+    .key-box { 
+      background: #f3f4f6; 
+      border: 1px dashed #cbd5e1; 
+      padding: 10px; 
+      border-radius: 8px; 
+      font-family: monospace; 
+      color: #64748b; 
+      font-size: 0.85rem; 
+      margin-top: 10px; 
+      word-break: break-all; 
+    }
+    
+    .stats-grid { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr 1fr; 
+      gap: 10px; 
+      margin: 20px 0; 
+    }
+    
+    .stat-box { 
+      padding: 10px; 
+      border-radius: 10px; 
+      font-weight: bold; 
+    }
+    
+    .delete-row { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      padding: 12px 0; 
+      border-bottom: 1px solid #f3f4f6; 
+    }
+    
+    .del-btn-small { 
+      background: #fee2e2; 
+      color: #dc2626; 
+      border: none; 
+      padding: 6px 12px; 
+      border-radius: 6px; 
+      font-weight: 600; 
+      font-size: 0.8rem; 
+      cursor: pointer; 
+    }
+    
+    /* MODALS */
+    .modal { 
+      display: none; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.5); 
+      z-index: 300; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    
+    .modal-content { 
+      background: white; 
+      padding: 25px; 
+      border-radius: 20px; 
+      width: 90%; 
+      max-width: 350px; 
+    }
+    
+    #toast { 
+      position: fixed; 
+      bottom: 30px; 
+      left: 50%; 
+      transform: translateX(-50%); 
+      background: #1f2937; 
+      color: white; 
+      padding: 12px 24px; 
+      border-radius: 50px; 
+      display: none; 
+      z-index: 200; 
+    }
+    
+    .toast-success { background: #059669 !important; } 
+    .toast-error { background: #dc2626 !important; }
   </style>
 </head>
 <body>
+
   <div class="nav-tabs">
     <button class="nav-btn active" onclick="switchTab('scan')">Scan</button>
     <button class="nav-btn" onclick="switchTab('register')">Register</button>
@@ -64,242 +395,880 @@
       <div class="card-header">
         <div class="header-top-row">
           <div class="icon-btn" onclick="logout()" style="background:#fee2e2;color:#dc2626">🚪</div>
-          <button id="btnNewClass" class="btn-new-class" onclick="goToCreator()">+ New Class</button>
+          <div style="display:flex;gap:10px">
+            <button id="btnNewClass" class="btn-new-class" onclick="goToCreator()">+ New Class</button>
+            <div class="icon-btn" onclick="openSettings()">⚙️</div>
+          </div>
         </div>
-        <h2 id="welcomeHeader">👋 Teacher</h2>
-        <select id="sheetSelectorScan" onchange="syncSelectors(this.value); loadClassCache(this.value)"><option disabled selected>Loading...</option></select>
+        <div class="header-title-row">
+          <h2 id="welcomeHeader">👋 Teacher</h2>
+          <p id="lateStatus" style="color:#f59e0b;font-size:0.85rem;margin:2px 0 0 0;font-weight:500">Late Time: OFF</p>
+        </div>
+        <div class="header-bottom-row">
+          <select id="sheetSelectorScan" onchange="syncSelectors(this.value); loadClassCache(this.value)">
+            <option disabled selected>Loading...</option>
+          </select>
+        </div>
       </div>
       <div class="card-body-scanner">
         <div id="reader"></div>
-        <div id="fileBtnContainer" class="scan-file-btn">Scan an Image File<input type="file" accept="image/*" onchange="handleFileScan(this)"></div>
+        <div id="fileBtnContainer" class="scan-file-btn">
+          Scan an Image File
+          <input type="file" accept="image/*" onchange="handleFileScan(this)">
+        </div>
         <button id="cameraBtn" class="camera-switch-btn" onclick="restartCamera()">📸 Switch back to Camera</button>
       </div>
     </div>
   </div>
 
-  <div id="tab-register" class="container"><div class="main-card"><div class="card-header"><h2>📝 Single Entry</h2><select id="sheetSelectorReg" onchange="syncSelectors(this.value)"></select><label>Full Name</label><input type="text" id="regName" placeholder="e.g. Doe, John"><label>Gender</label><select id="regGender"><option>Male</option><option>Female</option></select><button id="btnReg" class="btn-primary" onclick="handleRegister()">Register Student</button></div><div id="regResult" class="card-body light" style="display:none;text-align:center;"><h3 style="color:#059669;">Success!</h3><img id="regQrImg" style="margin:15px auto; width:160px;" src=""><p id="regNameDisplay" style="font-weight:bold;"></p><button class="btn-primary" onclick="downloadSingleQR()">Download QR</button></div></div></div>
+  <div id="tab-register" class="container">
+    <div class="main-card">
+      <div class="card-header">
+        <h2>📝 Single Entry</h2>
+        <select id="sheetSelectorReg" onchange="syncSelectors(this.value)"></select>
+        <label>Full Name</label>
+        <input type="text" id="regName" placeholder="e.g. Doe, John">
+        <label>Gender</label>
+        <select id="regGender">
+          <option>Male</option>
+          <option>Female</option>
+        </select>
+        <button id="btnReg" class="btn-primary" onclick="handleRegister()">Register Student</button>
+      </div>
+      <div id="regResult" class="card-body light" style="display:none;text-align:center;">
+        <h3 style="color:#059669;margin-top:0">Success!</h3>
+        <img id="regQrImg" style="margin:15px auto; width:160px; border:8px solid white; border-radius:16px; box-shadow:0 5px 15px rgba(0,0,0,0.1)" src="">
+        <p id="regNameDisplay" style="font-weight:bold; margin:10px 0;"></p>
+        <div class="key-box">Key: <span id="regKeyDisplay">...</span></div>
+        <button class="btn-primary" style="background:#111827" onclick="downloadSingleQR()">Download QR Image</button>
+      </div>
+    </div>
+  </div>
 
-  <div id="tab-bulk" class="container"><div class="main-card"><div class="card-header"><h2>📦 Bulk Sort</h2><select id="sheetSelectorBulk" onchange="syncSelectors(this.value)"></select><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><label>MALES</label><textarea id="bulkMales" style="height:100px"></textarea></div><div><label>FEMALES</label><textarea id="bulkFemales" style="height:100px"></textarea></div></div><button id="btnBulk" class="btn-primary" onclick="handleBulkRegister()">Generate & ZIP</button></div></div></div>
+  <div id="tab-bulk" class="container">
+    <div class="main-card">
+      <div class="card-header">
+        <h2>📦 Bulk Sort</h2>
+        <select id="sheetSelectorBulk" onchange="syncSelectors(this.value)"></select>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label>MALES</label>
+            <textarea id="bulkMales" style="height:150px" placeholder="1 name per line"></textarea>
+          </div>
+          <div>
+            <label>FEMALES</label>
+            <textarea id="bulkFemales" style="height:150px" placeholder="1 name per line"></textarea>
+          </div>
+        </div>
+        <button id="btnBulk" class="btn-primary" onclick="handleBulkRegister()">Generate & ZIP</button>
+      </div>
+    </div>
+  </div>
 
   <div id="tab-manage" class="container">
     <div class="main-card">
       <div class="card-header">
         <h2>🔍 Search & Reports</h2>
         <select id="sheetSelectorSearch" onchange="syncSelectors(this.value); loadClassCache(this.value)"></select>
-        <input type="text" id="searchName" placeholder="Filter..." oninput="filterStudents(this.value)">
-        <div id="rosterContainer"></div>
-        <button id="btnDownloadExcel" class="btn-primary" style="background:#10b981" onclick="downloadExcelReport()">📊 Download Excel Report (.xlsx)</button>
+        <input type="text" id="searchName" placeholder="Search student name..." oninput="filterStudents(this.value)">
+        
+        <div id="rosterContainer">
+          <div style="padding:15px;color:#9ca3af;text-align:center">Select a class to view students.</div>
+        </div>
+        
+        <hr style="margin:20px 0;border:0;border-top:1px solid #eee">
+        <button class="btn-primary" style="margin-top:0; margin-bottom:10px; background:#4f46e5;" onclick="downloadReport()">📄 Download PDF Report</button>
+        <button id="btnDownloadExcel" class="btn-primary" style="margin-top:0; background:#10b981;" onclick="downloadExcelReport()">📊 Download Excel Report (.xlsx)</button>
       </div>
+      
       <div class="card-body light" id="searchResult" style="display:none;text-align:center">
+        <div style="text-align:left;margin-bottom:10px;cursor:pointer;color:#6b7280" onclick="document.getElementById('searchResult').style.display='none'">← Back to List</div>
+        
+        <img id="searchQrImg" style="margin:0 auto 10px auto; width:150px; border-radius:10px; border:5px solid white; box-shadow:0 4px 10px rgba(0,0,0,0.1);" src="">
         <h3 id="searchResultName"></h3>
+        <div class="key-box">Key: <span id="searchResultKey"></span></div>
+        
         <div class="stats-grid">
           <div class="stat-box" style="background:#ecfdf5;color:#059669">Present<br><span id="statPresent">0</span></div>
           <div class="stat-box" style="background:#fffbeb;color:#d97706">Late<br><span id="statLate">0</span></div>
           <div class="stat-box" style="background:#fef2f2;color:#dc2626">Absent<br><span id="statAbsent">0</span></div>
         </div>
-        <button class="btn-outline" onclick="switchTab('scan')">📷 Back to Scanning</button>
+        
+        <button class="btn-primary" style="background:#111827; margin-bottom: 20px;" onclick="downloadSearchQR()">Download QR</button>
+        
+        <div style="display:flex;gap:10px;justify-content:center">
+          <button style="flex:1; background:#e5e7eb; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;" onclick="document.getElementById('editForm').style.display='block'">Edit Name</button>
+          <button style="flex:1; background:#fee2e2; color:#dc2626; border:none; padding:12px; border-radius:10px; cursor:pointer; font-weight:bold;" onclick="deleteCurrentStudent()">Delete Student</button>
+        </div>
+        
+        <div id="editForm" style="display:none; margin-top:20px;">
+          <input type="text" id="editNameInput" placeholder="New Full Name">
+          <button class="btn-primary" onclick="saveStudentEdit()">Save New Name</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div id="tab-sem" class="container"><div class="main-card"><div class="card-header"><h2>📝 Semester Registration</h2><div style="display:flex;gap:10px;"><input type="text" id="semSection" placeholder="Section"><input type="text" id="semSubject" placeholder="Subject"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px"><div><label>MALES</label><textarea id="semMales" style="height:100px"></textarea></div><div><label>FEMALES</label><textarea id="semFemales" style="height:100px"></textarea></div></div><div style="margin-top:15px"><label>Start</label><select id="semFromMonth"></select><select id="semFromYear"></select><label>End</label><select id="semToMonth"></select><select id="semToYear"></select></div><button id="btnSem" class="btn-primary" onclick="createSemester()">Create & Register</button></div></div></div>
+  <div id="tab-sem" class="container">
+    <div class="main-card">
+      <div class="card-header">
+        <h2>📝 Semester Registration</h2>
+        <div style="display:flex;gap:10px;">
+          <div style="flex:1">
+            <label>Section</label>
+            <input type="text" id="semSection" placeholder="e.g. 10-A">
+          </div>
+          <div style="flex:1">
+            <label>Subject</label>
+            <input type="text" id="semSubject" placeholder="e.g. Math">
+          </div>
+        </div>
+        
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div><label>MALES</label><textarea id="semMales" style="height:100px"></textarea></div>
+          <div><label>FEMALES</label><textarea id="semFemales" style="height:100px"></textarea></div>
+        </div>
+        
+        <div style="margin-top:15px">
+          <label style="font-weight:bold; color:#6b7280; font-size:0.8rem;">Start Date</label>
+          <div style="display:flex;gap:5px; margin-bottom:10px;">
+            <select id="semFromMonth" style="flex:2"></select>
+            <select id="semFromYear" style="flex:1"></select>
+          </div>
+          
+          <label style="font-weight:bold; color:#6b7280; font-size:0.8rem;">End Date</label> 
+          <div style="display:flex;gap:5px">
+            <select id="semToMonth" style="flex:2"></select>
+            <select id="semToYear" style="flex:1"></select>
+          </div>
+        </div>
+        
+        <button id="btnSem" class="btn-primary" onclick="createSemester()">Create Sem & ZIP</button>
+      </div>
+    </div>
+  </div>
 
-  <div id="tab-delete" class="container"><div class="main-card"><div class="card-header"><h2>🗑️ Delete Classes</h2><div id="deleteListContainer">Loading...</div></div></div></div>
+  <div id="tab-delete" class="container">
+    <div class="main-card">
+      <div class="card-header">
+        <h2>🗑️ Delete Classes</h2>
+        <div id="deleteListContainer" style="margin-top: 10px;">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <h3 style="margin-top:0; color:#111827;">⚙️ Scanner Settings</h3>
+      <label style="display:block; margin-top:15px; font-weight:bold;">Late Time Limit</label>
+      <input type="time" id="lateTimeInput" style="width:100%; padding:12px; border-radius:10px; border:2px solid #e5e7eb; margin-top:5px;">
+      <p style="font-size:0.8rem; color:#6b7280;">Any student scanned after this time will be marked as Late.</p>
+      
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button style="flex:1;padding:12px;background:#e5e7eb;border:none;border-radius:10px;cursor:pointer;font-weight:bold;" onclick="document.getElementById('settingsModal').style.display='none'">Cancel</button>
+        <button style="flex:1;padding:12px;background:#4f46e5;color:white;border:none;border-radius:10px;cursor:pointer;font-weight:bold;" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+  </div>
 
   <div id="toast"></div>
 
   <script>
-    // --- V75 CONFIGURATION ---
+    // ==========================================
+    // V78 API CONFIGURATION
+    // ==========================================
+    
+    // REPLACE THIS WITH YOUR BRAND NEW GOOGLE WEB APP URL
     const API_URL = "https://script.google.com/macros/s/AKfycbzvrSgiCEdqIIUijTl0TRdxNAY5WCVdEpCTaKYTSECD1GjhUQJuYGSZourl7YxzhhUH/exec"; 
     
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token') || "";
-    let teacherUser="", teacherName="";
-    try{ const d=atob(decodeURIComponent(token)).split(":"); teacherUser=d[0]; teacherName=d[1]; }catch(e){}
+    
+    let teacherUser = "";
+    let teacherName = "";
+    
+    try { 
+      const decoded = atob(decodeURIComponent(token)).split(":"); 
+      teacherUser = decoded[0]; 
+      teacherName = decoded[1]; 
+    } catch(e) { }
 
     const createRunner = (successCb, failureCb) => {
       return new Proxy({}, {
         get: function(_, funcName) {
           if (funcName === 'withSuccessHandler') return (cb) => createRunner(cb, failureCb);
           if (funcName === 'withFailureHandler') return (cb) => createRunner(successCb, cb);
+          
           return function(...args) {
-            fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: funcName, args: args }), headers: { 'Content-Type': 'text/plain' } })
-            .then(r => r.json()).then(data => {
-              if (data.success && successCb) successCb(data.result);
-              else if (!data.success && failureCb) failureCb(data.error);
-            }).catch(err => { if(failureCb) failureCb(err); });
+            fetch(API_URL, { 
+              method: 'POST', 
+              body: JSON.stringify({ action: funcName, args: args }), 
+              headers: { 'Content-Type': 'text/plain' } 
+            })
+            .then(r => r.json())
+            .then(data => {
+              if (data.success && successCb) {
+                successCb(data.result);
+              } else if (!data.success && failureCb) {
+                failureCb(data.error);
+              }
+            })
+            .catch(err => { 
+              if(failureCb) failureCb(err); 
+            });
           }
         }
       });
     };
+    
     const google = { script: { run: createRunner(null, null) } };
 
-    let html5QrCode = null, validStudents=new Set(), lastScannedTime=0;
+    // ==========================================
+    // GLOBALS & INITIALIZATION
+    // ==========================================
+    
+    let html5QrCode = null;
+    let validStudents = new Set();
+    let studentListCache = [];
+    let lastScannedTime = 0;
+    let currentLateTime = null;
+    let currentSearchResult = null;
 
     window.onload = function() {
       initDatePickers();
-      if(!teacherUser) return alert("Please login first.");
+      
+      if (!teacherUser) {
+        alert("Session Invalid. Redirecting to Login.");
+        window.location.href = API_URL + "?page=login";
+        return;
+      }
+      
       document.getElementById('welcomeHeader').innerText = `👋 ${teacherName}`;
-      google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser);
+      
+      google.script.run
+        .withSuccessHandler(populateSelectors)
+        .withFailureHandler(err => {
+          alert("Connection Error: " + err);
+        })
+        .getTeacherClasses(teacherUser);
     };
 
-    function switchTab(t) {
-      document.querySelectorAll('.container').forEach(e=>e.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(e=>e.classList.remove('active'));
-      document.getElementById('tab-'+t).classList.add('active');
-      if(t==='scan') startScanner();
-      if(t==='delete') loadDeleteList();
+    function initDatePickers() {
+      const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+      const years = [2026, 2027, 2028, 2029, 2030];
+      
+      const fromM = document.getElementById("semFromMonth");
+      const toM = document.getElementById("semToMonth");
+      months.forEach(v => { fromM.add(new Option(v,v)); toM.add(new Option(v,v)); });
+      
+      const fromY = document.getElementById("semFromYear");
+      const toY = document.getElementById("semToYear");
+      years.forEach(v => { fromY.add(new Option(v,v)); toY.add(new Option(v,v)); });
     }
 
+    // ==========================================
+    // UI NAVIGATION
+    // ==========================================
+    
+    function switchTab(tabName) {
+      document.querySelectorAll('.container').forEach(e => e.classList.remove('active'));
+      document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+      
+      document.getElementById('tab-' + tabName).classList.add('active');
+      
+      const tabNames = ['scan', 'register', 'bulk', 'manage', 'sem', 'delete'];
+      const index = tabNames.indexOf(tabName);
+      if(index > -1) document.querySelectorAll('.nav-btn')[index].classList.add('active');
+      
+      if (tabName === 'manage') {
+        document.getElementById('searchResult').style.display = 'none';
+        document.getElementById('searchName').value = '';
+        filterStudents('');
+      }
+      
+      if (tabName === 'delete') {
+        loadDeleteList();
+      }
+      
+      if (tabName === 'scan' && (!html5QrCode || !html5QrCode.isScanning)) {
+        startScanner();
+      }
+    }
+
+    function goToCreator() {
+      window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token);
+    }
+
+    function logout() { 
+      if (confirm("Are you sure you want to log out?")) {
+        window.location.href = API_URL + "?page=login"; 
+      }
+    }
+
+    function showToast(message, type) { 
+      const el = document.getElementById("toast"); 
+      el.innerText = message; 
+      el.className = (type === "error") ? "toast-error" : "toast-success"; 
+      el.style.display = "block"; 
+      setTimeout(() => el.style.display = "none", 3000); 
+    }
+
+    function populateSelectors(classList) {
+      const dropdowns = ["sheetSelectorScan", "sheetSelectorReg", "sheetSelectorBulk", "sheetSelectorSearch"];
+      
+      dropdowns.forEach(id => {
+        const select = document.getElementById(id); 
+        select.innerHTML = '<option disabled selected>Select a Class...</option>';
+        
+        if (classList && classList.length > 0) {
+          classList.forEach(className => {
+            // Clean the name for UI
+            const cleanName = className.startsWith(teacherUser.toLowerCase() + "_") 
+              ? className.substring(teacherUser.length + 1) 
+              : className;
+              
+            select.add(new Option(cleanName, className));
+          });
+        } else {
+          select.add(new Option("No Classes Found", ""));
+        }
+      });
+      
+      if (!html5QrCode || !html5QrCode.isScanning) startScanner();
+    }
+
+    function syncSelectors(value) { 
+      ["sheetSelectorScan", "sheetSelectorReg", "sheetSelectorBulk", "sheetSelectorSearch"].forEach(id => {
+        document.getElementById(id).value = value;
+      });
+    }
+
+    // ==========================================
+    // SCANNER LOGIC
+    // ==========================================
+    
     function startScanner() {
-      try { if(html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); } catch(e){}
+      document.getElementById('reader').innerHTML = '<div style="color:#9ca3af; padding:50px; text-align:center;">Requesting Thunder Fast Camera...</div>';
+      
+      try { 
+        if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop(); 
+      } catch(e) {}
+      
       html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (d) => {
-        const now=Date.now(); if(now-lastScannedTime<2000)return; lastScannedTime=now;
-        const s=document.getElementById("sheetSelectorScan").value;
-        if(validStudents.size>0 && !validStudents.has(d.trim())) return showToast("Not in class", "error");
-        google.script.run.withSuccessHandler(() => showToast("Marked: "+d, "success")).recordScan(s, d.trim());
-      }).catch(err => console.log("Camera Error"));
+      html5QrCode.start(
+        { facingMode: "environment" }, 
+        { fps: 15, qrbox: { width: 250, height: 250 } }, 
+        onScanSuccess
+      ).catch(err => {
+        document.getElementById('reader').innerHTML = `
+          <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 20px; width: 90%; text-align: center;">
+            <h3 style="color: #dc2626; margin: 0 0 10px 0;">📷 Camera Blocked!</h3>
+            <p style="color: #7f1d1d; font-size: 0.85rem; margin-bottom: 15px;">Please allow camera access in your browser.</p>
+            <button onclick="startScanner()" style="background: #ef4444; color: white; padding: 10px; border: none; border-radius: 8px; font-weight: bold; width: 100%;">Retry Camera</button>
+          </div>
+        `;
+      });
+    }
+
+    function onScanSuccess(decodedText) { 
+      const now = Date.now(); 
+      if (now - lastScannedTime < 2000) return; 
+      
+      const sheetName = document.getElementById("sheetSelectorScan").value; 
+      if (!sheetName || sheetName === "Select a Class...") return showToast("Please select a class first", "error"); 
+      
+      if (validStudents.size > 0 && !validStudents.has(decodedText.trim())) { 
+        lastScannedTime = now; 
+        return showToast("Student not in this class", "error"); 
+      } 
+      
+      lastScannedTime = now; 
+      showToast("Scanned: " + decodedText, "success"); 
+      
+      google.script.run
+        .withFailureHandler(err => showToast(err, "error"))
+        .recordScan(sheetName, decodedText.trim(), currentLateTime); 
     }
 
     function handleFileScan(input) {
       if (input.files.length === 0) return;
-      const html5 = new Html5Qrcode("reader");
-      html5.scanFile(input.files[0], true).then(d => {
-        const s = document.getElementById("sheetSelectorScan").value;
-        google.script.run.withSuccessHandler(() => showToast("Marked: "+d, "success")).recordScan(s, d.trim());
-      }).catch(e => showToast("No QR found", "error"));
+      const file = input.files[0];
+      
+      const processFile = () => {
+        document.getElementById('fileBtnContainer').style.display = 'none';
+        document.getElementById('cameraBtn').style.display = 'block';
+        document.getElementById('reader').innerHTML = ""; 
+        
+        html5QrCode = new Html5Qrcode("reader");
+        html5QrCode.scanFile(file, true)
+          .then(text => onScanSuccess(text))
+          .catch(e => showToast("No QR code found in image.", "error"));
+      };
+
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().then(processFile).catch(processFile);
+      } else {
+        processFile();
+      }
+    }
+
+    function restartCamera() {
+      document.getElementById('cameraBtn').style.display = 'none';
+      document.getElementById('fileBtnContainer').style.display = 'block';
+      startScanner();
+    }
+
+    // ==========================================
+    // REGISTRATION & BULK & SEMESTER
+    // ==========================================
+    
+    function generateQrWithLabel(value, labelText) {
+      return new Promise(resolve => {
+        const canvas = document.createElement('canvas'); 
+        canvas.width = 500; 
+        canvas.height = 580; 
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = "#ffffff"; 
+        ctx.fillRect(0, 0, 500, 580); 
+        ctx.fillStyle = "#000000"; 
+        
+        let fontSize = 40; 
+        ctx.font = `bold ${fontSize}px Arial`; 
+        while(ctx.measureText(labelText).width > 460 && fontSize > 10) {
+          fontSize--; 
+          ctx.font = `bold ${fontSize}px Arial`;
+        } 
+        ctx.textAlign = "center"; 
+        ctx.textBaseline = "middle"; 
+        ctx.fillText(labelText, 250, 40);
+        
+        const qr = new QRious({ value: value.trim(), size: 400, level: 'H' });
+        const img = new Image(); 
+        img.onload = () => { 
+          ctx.drawImage(img, 50, 80, 400, 400); 
+          resolve(canvas.toDataURL()); 
+        }; 
+        img.src = qr.toDataURL();
+      });
+    }
+
+    function handleRegister() { 
+      const sheetName = document.getElementById("sheetSelectorReg").value; 
+      const studentName = document.getElementById("regName").value; 
+      const gender = document.getElementById("regGender").value; 
+      
+      if (!sheetName || !studentName) return showToast("Missing information", "error"); 
+      
+      const btn = document.getElementById('btnReg'); 
+      btn.innerText = "Processing..."; 
+      btn.disabled = true; 
+      document.getElementById("regResult").style.display = "none"; 
+      
+      google.script.run
+        .withSuccessHandler(async res => { 
+          btn.innerText = "Register Student"; 
+          btn.disabled = false; 
+          
+          if (res.success) { 
+            if (res.count === 0) return alert("The name is already registered."); 
+            
+            showToast("Student Registered!", "success"); 
+            const student = res.addedStudents[0]; 
+            document.getElementById("regName").value = ""; 
+            
+            const qrData = await generateQrWithLabel(student.name, student.name); 
+            document.getElementById("regQrImg").src = qrData; 
+            document.getElementById("regNameDisplay").innerText = student.name; 
+            document.getElementById("regKeyDisplay").innerText = student.key; 
+            document.getElementById("regResult").style.display = "block"; 
+            
+            // Auto update UI cache if manage tab is open
+            if(sheetName === document.getElementById("sheetSelectorSearch").value) {
+              loadClassCache(sheetName);
+            }
+          } else { 
+            showToast(res.message, "error"); 
+          } 
+        })
+        .withFailureHandler(err => { 
+          btn.innerText = "Register Student"; 
+          btn.disabled = false; 
+          showToast("Connection Error", "error"); 
+        })
+        .registerStudent(sheetName, studentName, gender); 
+    }
+
+    async function handleBulkRegister() {
+      const sheetName = document.getElementById("sheetSelectorBulk").value;
+      const males = document.getElementById("bulkMales").value.split('\n');
+      const females = document.getElementById("bulkFemales").value.split('\n');
+      
+      if (!sheetName) return showToast("Please select a class", "error");
+      
+      const btn = document.getElementById('btnBulk'); 
+      btn.innerText = "Registering & Generating ZIP..."; 
+      btn.disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(async res => {
+          if (res.success) {
+            if (res.addedStudents.length === 0) {
+              showToast("No new students added. (Duplicates skipped)", "error");
+            } else {
+              showToast(`Registered ${res.addedStudents.length}! Building ZIP...`, "success");
+              try {
+                const zip = new JSZip();
+                for (const student of res.addedStudents) {
+                  const qrData = await generateQrWithLabel(student.name, student.name);
+                  const cleanBase64 = qrData.split(',')[1];
+                  zip.file(student.name + ".jpg", cleanBase64, {base64: true});
+                }
+                const content = await zip.generateAsync({type:"blob"});
+                saveAs(content, sheetName + "_QRCodes.zip");
+                showToast("ZIP Downloaded!", "success");
+                
+                document.getElementById("bulkMales").value = "";
+                document.getElementById("bulkFemales").value = "";
+              } catch(e) {
+                alert("ZIP Creation Failed: " + e.message);
+              }
+            }
+          } else {
+            showToast(res.message, "error");
+          }
+          btn.innerText = "Generate & ZIP"; 
+          btn.disabled = false;
+        })
+        .withFailureHandler(err => {
+          btn.innerText = "Generate & ZIP"; 
+          btn.disabled = false;
+          alert("Error: " + err);
+        })
+        .bulkRegisterStudents(sheetName, males, females);
+    }
+
+    function createSemester() { 
+      const subject = document.getElementById('semSubject').value;
+      const section = document.getElementById('semSection').value;
+      const fromM = document.getElementById('semFromMonth').value;
+      const fromY = document.getElementById('semFromYear').value;
+      const toM = document.getElementById('semToMonth').value;
+      const toY = document.getElementById('semToYear').value;
+      const males = document.getElementById('semMales').value;
+      const females = document.getElementById('semFemales').value;
+      
+      if (!subject || !section) return showToast("Please enter Subject & Section", "error"); 
+      
+      const btn = document.getElementById('btnSem'); 
+      btn.innerText = "Creating Timeline..."; 
+      btn.disabled = true; 
+      
+      google.script.run
+        .withSuccessHandler(async res => { 
+          btn.innerText = "Create Sem & ZIP"; 
+          btn.disabled = false; 
+          
+          if (res.success) { 
+            showToast(res.message, "success"); 
+            
+            // Clean up form
+            document.getElementById('semSubject').value = ""; 
+            document.getElementById('semSection').value = ""; 
+            document.getElementById('semMales').value = ""; 
+            document.getElementById('semFemales').value = ""; 
+            
+            // Refresh class dropdowns
+            google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser); 
+            
+            // Handle ZIP Generation
+            if (res.students && res.students.length > 0) {
+               showToast("Building Master ZIP...", "success");
+               try {
+                 const zip = new JSZip();
+                 for (const student of res.students) {
+                   const qrData = await generateQrWithLabel(student.name, student.name);
+                   const cleanBase64 = qrData.split(',')[1];
+                   zip.file(student.name + ".jpg", cleanBase64, {base64: true});
+                 }
+                 const content = await zip.generateAsync({type:"blob"});
+                 saveAs(content, subject + "_" + section + "_QRCodes.zip");
+                 showToast("Master ZIP Downloaded!", "success");
+               } catch(err) { 
+                 alert("ZIP Error: " + err.message); 
+               }
+            }
+          } else { 
+            showToast(res.message, "error"); 
+          } 
+        })
+        .createBatchMonthlySheets(teacherUser, subject, section, fromM, fromY, toM, toY, males, females); 
+    }
+
+    // ==========================================
+    // MANAGE TAB (Search, Edit, Delete, Export)
+    // ==========================================
+
+    function loadClassCache(sheetName) { 
+      if (!sheetName) return; 
+      
+      const container = document.getElementById('rosterContainer'); 
+      container.style.display = 'block'; 
+      container.innerHTML = '<div style="padding:15px; text-align:center;">Loading students...</div>'; 
+      
+      validStudents.clear(); 
+      studentListCache = []; 
+      
+      google.script.run
+        .withSuccessHandler(list => { 
+          container.innerHTML = ''; 
+          
+          if(list.length === 0) {
+            container.innerHTML = '<div style="padding:15px; text-align:center;">No students in this class.</div>';
+            return;
+          }
+          
+          list.forEach(name => { 
+            validStudents.add(name); 
+            studentListCache.push(name); 
+            
+            const div = document.createElement('div'); 
+            div.className = 'roster-item'; 
+            div.innerText = name; 
+            div.onclick = () => { 
+              document.getElementById('searchName').value = name; 
+              handleSearch(); 
+            }; 
+            container.appendChild(div); 
+          }); 
+        })
+        .getStudentList(sheetName); 
+    }
+
+    function filterStudents(query) { 
+      const items = document.querySelectorAll('.roster-item'); 
+      const lowerQuery = query.toLowerCase(); 
+      items.forEach(item => { 
+        item.style.display = item.innerText.toLowerCase().includes(lowerQuery) ? 'block' : 'none'; 
+      }); 
+    }
+
+    function handleSearch() { 
+      const sheetName = document.getElementById("sheetSelectorSearch").value; 
+      const studentName = document.getElementById("searchName").value; 
+      
+      if(!studentName) return;
+      
+      google.script.run
+        .withSuccessHandler(async res => { 
+          if (res.success) { 
+            currentSearchResult = res; 
+            
+            document.getElementById("searchResult").style.display = "block"; 
+            document.getElementById("searchResultName").innerText = res.name; 
+            document.getElementById("searchResultKey").innerText = res.key; 
+            
+            document.getElementById("statPresent").innerText = res.present; 
+            document.getElementById("statLate").innerText = res.late; 
+            document.getElementById("statAbsent").innerText = res.absent; 
+            
+            document.getElementById("editForm").style.display = "none"; 
+            document.getElementById("editNameInput").value = "";
+            
+            try { 
+              const qrData = await generateQrWithLabel(res.name, res.name);
+              document.getElementById("searchQrImg").src = qrData; 
+            } catch(e) {}
+            
+          } else { 
+            showToast("Student not found.", "error"); 
+          }
+        })
+        .searchStudent(sheetName, studentName); 
+    }
+
+    function saveStudentEdit() { 
+      const sheetName = document.getElementById("sheetSelectorSearch").value; 
+      const newName = document.getElementById("editNameInput").value; 
+      
+      if (!newName) return showToast("Enter a new name", "error"); 
+      
+      google.script.run
+        .withSuccessHandler(res => { 
+          showToast(res.message || "Updated Successfully", res.success ? "success" : "error"); 
+          if (res.success) {
+            document.getElementById("searchName").value = newName;
+            handleSearch(); 
+            loadClassCache(sheetName); // Refresh the roster
+          }
+        })
+        .updateStudent(sheetName, currentSearchResult.name, newName, "Male"); 
+    }
+
+    function deleteCurrentStudent() { 
+      if (!confirm("Are you sure you want to completely remove this student?")) return; 
+      
+      const sheetName = document.getElementById("sheetSelectorSearch").value;
+      
+      google.script.run
+        .withSuccessHandler(res => { 
+          showToast(res.message || "Student Deleted", res.success ? "success" : "error"); 
+          if(res.success) {
+            document.getElementById("searchResult").style.display = "none"; 
+            document.getElementById("searchName").value = "";
+            loadClassCache(sheetName);
+          }
+        })
+        .deleteStudent(sheetName, currentSearchResult.name); 
+    }
+
+    // --- DOWNLOAD EXPORTS ---
+    function downloadSingleQR() { 
+      const src = document.getElementById("regQrImg").src; 
+      const name = document.getElementById("regNameDisplay").innerText; 
+      if (src && name) saveAs(src, name + "_QR.jpg"); 
+    }
+    
+    function downloadSearchQR() { 
+      const src = document.getElementById("searchQrImg").src; 
+      const name = document.getElementById("searchResultName").innerText; 
+      if (src && name) saveAs(src, name + "_QR.jpg"); 
+    }
+
+    function downloadReport() {
+      const sheetName = document.getElementById("sheetSelectorSearch").value;
+      if (!sheetName || sheetName === "Select a Class...") return showToast("Select a class first", "error");
+      
+      showToast("Generating PDF Template...", "success");
+      
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res.success) {
+            const link = document.createElement('a'); 
+            link.href = res.url; 
+            link.target = '_blank';
+            document.body.appendChild(link); 
+            link.click(); 
+            document.body.removeChild(link);
+          } else {
+            showToast("Failed to generate PDF", "error");
+          }
+        })
+        .getExportUrl(sheetName);
     }
 
     function downloadExcelReport() {
-      const s = document.getElementById("sheetSelectorSearch").value;
-      if (!s || s === "Select...") return showToast("Select a class first", "error");
+      const sheetName = document.getElementById("sheetSelectorSearch").value;
+      if (!sheetName || sheetName === "Select a Class...") return showToast("Select a class first", "error");
       
       const btn = document.getElementById("btnDownloadExcel");
-      btn.innerText = "Extracting Values..."; btn.disabled = true;
+      btn.innerText = "Extracting Values..."; 
+      btn.disabled = true;
       
       google.script.run
         .withSuccessHandler(res => {
           if (res.success) {
             btn.innerText = "Building Excel File...";
+            
             const worksheet = XLSX.utils.aoa_to_sheet(res.data);
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
-            XLSX.writeFile(workbook, s + "_Values_Only.xlsx");
-            showToast("Excel Downloaded!", "success");
-            btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
+            
+            const cleanFileName = sheetName.startsWith(teacherUser.toLowerCase() + "_") 
+              ? sheetName.substring(teacherUser.length + 1) 
+              : sheetName;
+              
+            XLSX.writeFile(workbook, cleanFileName + "_Values_Only.xlsx");
+            
+            showToast("Excel Downloaded Successfully!", "success");
+            btn.innerText = "📊 Download Excel Report (.xlsx)"; 
+            btn.disabled = false;
           } else {
             alert("Error: " + res.message);
-            btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+            btn.innerText = "📊 Download Excel Report (.xlsx)"; 
+            btn.disabled = false;
           }
         })
         .withFailureHandler(err => {
           alert("Connection Error: " + err);
-          btn.innerText = "📊 Download Excel Report (.xlsx)"; btn.disabled = false;
+          btn.innerText = "📊 Download Excel Report (.xlsx)"; 
+          btn.disabled = false;
         })
-        .getReportValues(s);
+        .getReportValues(sheetName);
     }
 
-    async function handleBulkRegister() {
-      const s = document.getElementById("sheetSelectorBulk").value;
-      const m = document.getElementById("bulkMales").value.split('\n');
-      const f = document.getElementById("bulkFemales").value.split('\n');
-      const btn = document.getElementById('btnBulk'); btn.innerText="Processing..."; btn.disabled=true;
-      google.script.run.withSuccessHandler(async r => {
-        if(r.success && r.addedStudents.length > 0) {
-          const zip = new JSZip();
-          for(const st of r.addedStudents){
-            const qrData = await generateQrWithLabel(st.name, st.name);
-            zip.file(st.name + ".jpg", qrData.split(',')[1], {base64: true});
-          }
-          const content = await zip.generateAsync({type:"blob"});
-          saveAs(content, s + "_QRCodes.zip");
-        }
-        btn.innerText="Generate & ZIP"; btn.disabled=false;
-      }).bulkRegisterStudents(s, m, f);
-    }
-
-    function handleRegister() {
-      const s=document.getElementById("sheetSelectorReg").value; const n=document.getElementById("regName").value;
-      google.script.run.withSuccessHandler(async r => {
-        if(r.success){
-          const stu=r.addedStudents[0]; const qrData=await generateQrWithLabel(stu.name, stu.name);
-          document.getElementById("regQrImg").src = qrData; document.getElementById("regNameDisplay").innerText = stu.name;
-          document.getElementById("regResult").style.display="block";
-        }
-      }).registerStudent(s, n, "Male");
-    }
-
-    function loadClassCache(n) {
-      google.script.run.withSuccessHandler(l => {
-        const c = document.getElementById('rosterContainer'); c.innerHTML = ''; c.style.display='block';
-        validStudents.clear();
-        l.forEach(name => {
-          validStudents.add(name);
-          const div = document.createElement('div'); div.className='roster-item'; div.innerText=name;
-          div.onclick = () => { document.getElementById('searchName').value = name; handleSearch(); };
-          c.appendChild(div);
-        });
-      }).getStudentList(n);
-    }
-
-    function handleSearch() {
-      const s = document.getElementById("sheetSelectorSearch").value; const n = document.getElementById("searchName").value;
-      google.script.run.withSuccessHandler(r => {
-        if(r.success) {
-          document.getElementById('searchResult').style.display = 'block';
-          document.getElementById('searchResultName').innerText = r.name;
-          document.getElementById('statPresent').innerText = r.present;
-          document.getElementById('statLate').innerText = r.late;
-          document.getElementById('statAbsent').innerText = r.absent;
-        }
-      }).searchStudent(s, n);
-    }
-
-    function generateQrWithLabel(v,l) {
-      return new Promise(r=>{
-        const c=document.createElement('canvas'); c.width=500; c.height=580; const x=c.getContext('2d');
-        x.fillStyle="#fff"; x.fillRect(0,0,500,580); x.fillStyle="#000"; x.font="bold 40px Arial"; x.textAlign="center"; x.fillText(l,250,40);
-        const q=new QRious({value:v.trim(),size:400,level:'H'});
-        const i=new Image(); i.onload=()=>{ x.drawImage(i,50,80,400,400); r(c.toDataURL()); }; i.src=q.toDataURL();
-      });
-    }
-
-    // --- RESTORED: CLEAN UI NAMES FOR DELETE LIST ---
-    function loadDeleteList() {
-      google.script.run.withSuccessHandler(l => {
-        const c = document.getElementById('deleteListContainer'); c.innerHTML = '';
-        l.forEach(cls => {
-          const cleanName = cls.startsWith(teacherUser.toLowerCase() + "_") ? cls.substring(teacherUser.length + 1) : cls;
-          c.innerHTML += `<div class="delete-row"><span>${cleanName}</span><button class="del-btn-small" onclick="triggerDelete('${cls}')">Delete</button></div>`;
-        });
-      }).getTeacherClasses(teacherUser);
-    }
-
-    function triggerDelete(n) { if(confirm("Delete?")) google.script.run.withSuccessHandler(loadDeleteList).deleteClassSheet(n, teacherUser, 'teacher'); }
+    // ==========================================
+    // DELETE CLASSES TAB
+    // ==========================================
     
-    // --- RESTORED: CLEAN UI NAMES FOR ALL DROPDOWNS ---
-    function populateSelectors(l) {
-      ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id => {
-        const e=document.getElementById(id); e.innerHTML='<option>Select...</option>';
-        l.forEach(n => {
-          const cleanName = n.startsWith(teacherUser.toLowerCase() + "_") ? n.substring(teacherUser.length + 1) : n;
-          e.add(new Option(cleanName, n));
-        });
-      });
+    function loadDeleteList() {
+      const container = document.getElementById('deleteListContainer'); 
+      container.innerHTML = '<div style="text-align:center; padding:20px; color:#6b7280;">Loading database...</div>';
+      
+      google.script.run
+        .withSuccessHandler(list => {
+          container.innerHTML = '';
+          if (list.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:20px;">No classes found.</div>';
+            return;
+          }
+          
+          list.forEach(sheetName => {
+            const cleanName = sheetName.startsWith(teacherUser.toLowerCase() + "_") 
+              ? sheetName.substring(teacherUser.length + 1) 
+              : sheetName;
+              
+            container.innerHTML += `
+              <div class="delete-row">
+                <span style="font-weight: 500;">${cleanName}</span>
+                <button class="del-btn-small" onclick="triggerDelete('${sheetName}')">Delete</button>
+              </div>
+            `;
+          });
+        })
+        .getTeacherClasses(teacherUser);
     }
 
-    function logout() { window.location.href = API_URL + "?page=login"; }
-    function goToCreator() { window.location.href = API_URL + "?page=teacherCreator&token=" + encodeURIComponent(token); }
-    function syncSelectors(v) { ["sheetSelectorScan","sheetSelectorReg","sheetSelectorBulk","sheetSelectorSearch"].forEach(id=>document.getElementById(id).value=v); }
-    function showToast(m, t) { const el=document.getElementById("toast"); el.innerText=m; el.style.display="block"; setTimeout(()=>el.style.display="none",3000); }
-    function filterStudents(q) { const items=document.querySelectorAll('.roster-item'); items.forEach(i=>i.style.display=i.innerText.toLowerCase().includes(q.toLowerCase())?'block':'none'); }
-    function initDatePickers() {
-      const m=["January","February","March","April","May","June","July","August","September","October","November","December"];
-      const y=[2026,2027,2028,2029,2030];
-      ["semFromMonth","semToMonth"].forEach(id=>m.forEach(v=>document.getElementById(id).add(new Option(v,v))));
-      ["semFromYear","semToYear"].forEach(id=>y.forEach(v=>document.getElementById(id).add(new Option(v,v))));
+    function triggerDelete(sheetName) { 
+      if (confirm(`Are you sure you want to permanently delete the class:\n\n${sheetName}`)) {
+        document.getElementById('deleteListContainer').innerHTML = '<div style="text-align:center; padding:20px; color:#dc2626;">Deleting...</div>';
+        
+        google.script.run
+          .withSuccessHandler(res => {
+            showToast(res.message, res.success ? "success" : "error");
+            loadDeleteList();
+            
+            // Refresh main dropdowns
+            google.script.run.withSuccessHandler(populateSelectors).getTeacherClasses(teacherUser);
+          })
+          .deleteClassSheet(sheetName, teacherUser, 'teacher'); 
+      }
     }
+
+    // ==========================================
+    // SETTINGS MODAL
+    // ==========================================
+    
+    function openSettings() { 
+      document.getElementById("settingsModal").style.display = 'flex'; 
+    }
+    
+    function saveSettings() { 
+      currentLateTime = document.getElementById("lateTimeInput").value; 
+      
+      const statusText = document.getElementById("lateStatus");
+      if (currentLateTime) {
+        statusText.innerText = `Late Tracking: ${currentLateTime}`;
+        statusText.style.color = "#dc2626"; // Red to show it's active
+      } else {
+        statusText.innerText = "Late Time: OFF";
+        statusText.style.color = "#f59e0b"; // Orange default
+      }
+      
+      document.getElementById("settingsModal").style.display = 'none'; 
+      showToast("Settings Saved", "success");
+    }
+
   </script>
 </body>
 </html>
